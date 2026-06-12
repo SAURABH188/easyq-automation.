@@ -7,6 +7,7 @@
         <classes>
             <class name="tests.LoginTest"/>
             <class name="tests.EasyQHomepage"/>
+            <class name="tests.EasyQLoginValidation"/>
         </classes>
     </test>
 </suite>
