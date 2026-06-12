@@ -1,0 +1,21 @@
+# Maven build output
+target/
+
+# TestNG reports and screenshots
+test-output/
+
+# Eclipse local metadata
+.settings/
+.classpath
+.project
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Local secrets
+.env
+*.local.properties
