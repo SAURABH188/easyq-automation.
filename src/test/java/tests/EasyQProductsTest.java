@@ -59,21 +59,21 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 1, description = "Verify product list loads successfully")
-    // Test Case No: PROD_TC001
+    // Manual Test Case ID: TC621
     public void verifyProductListLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(productsTitle)).isDisplayed(),
                 "Products module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify product list with no data")
-    // Test Case No: PROD_TC002
+    // Manual Test Case ID: TC622
     public void verifyProductListWithNoData() {
         Assert.assertTrue(isElementDisplayed(noDataMessage) || hasProductDataOrPageLoaded(),
                 "Products page should show product data or valid empty state");
     }
 
     @Test(priority = 3, description = "Verify product details display")
-    // Test Case No: PROD_TC003
+    // Manual Test Case ID: TC623
     public void verifyProductDetailsDisplay() {
         String bodyText = getBodyText();
         Assert.assertTrue(bodyText.length() > 40 || hasProductDataOrPageLoaded(),
@@ -81,7 +81,7 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 4, description = "Verify search functionality")
-    // Test Case No: PROD_TC004
+    // Manual Test Case ID: TC624
     public void verifySearchFunctionality() {
         if (!isElementDisplayed(searchInput)) {
             throw new SkipException("Search input is not available or locator needs confirmation");
@@ -96,7 +96,7 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 5, description = "Verify search with no results")
-    // Test Case No: PROD_TC005
+    // Manual Test Case ID: TC625
     public void verifySearchWithNoResults() {
         if (!isElementDisplayed(searchInput)) {
             throw new SkipException("Search input is not available or locator needs confirmation");
@@ -113,21 +113,21 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 6, description = "Verify filter by status")
-    // Test Case No: PROD_TC006
+    // Manual Test Case ID: TC626
     public void verifyFilterByStatus() {
         Assert.assertTrue(isElementDisplayed(statusFilter) || hasProductDataOrPageLoaded(),
                 "Status filter should be available when filtering is supported");
     }
 
     @Test(priority = 7, description = "Verify filter reset")
-    // Test Case No: PROD_TC007
+    // Manual Test Case ID: TC627
     public void verifyFilterReset() {
         Assert.assertTrue(isElementDisplayed(clearFilterButton) || hasProductDataOrPageLoaded(),
                 "Clear/reset filter should be available when filters are applied");
     }
 
     @Test(priority = 8, description = "Verify pagination functionality")
-    // Test Case No: PROD_TC008
+    // Manual Test Case ID: TC628
     public void verifyPaginationFunctionality() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Next page control is not available for current product data");
@@ -143,7 +143,7 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 9, description = "Verify pagination boundary")
-    // Test Case No: PROD_TC009
+    // Manual Test Case ID: TC629
     public void verifyPaginationBoundary() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Next page control is not available for boundary validation");
@@ -159,40 +159,40 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 10, description = "Verify product status display")
-    // Test Case No: PROD_TC010
+    // Manual Test Case ID: TC630
     public void verifyProductStatusDisplay() {
         Assert.assertTrue(isElementDisplayed(productStatusText) || hasProductDataOrPageLoaded(),
                 "Product status should be visible when products exist");
     }
 
     @Test(priority = 11, description = "Verify long product name handling")
-    // Test Case No: PROD_TC011
+    // Manual Test Case ID: TC631
     public void verifyLongProductNameHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Products page should handle long product names without UI break");
     }
 
     @Test(priority = 12, description = "Verify special characters in product fields")
-    // Test Case No: PROD_TC012
+    // Manual Test Case ID: TC632
     public void verifySpecialCharactersInProductFields() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Products page should remain stable for products with special characters");
     }
 
     @Test(priority = 13, description = "Verify status update")
-    // Test Case No: PROD_TC013
+    // Manual Test Case ID: TC633
     public void verifyStatusUpdate() {
         throw new SkipException("Requires disposable product data and status update control locator");
     }
 
     @Test(priority = 14, description = "Verify inactive product restriction")
-    // Test Case No: PROD_TC014
+    // Manual Test Case ID: TC634
     public void verifyInactiveProductRestriction() {
         throw new SkipException("Requires inactive product and target module dropdown validation");
     }
 
     @Test(priority = 15, description = "Verify delete product functionality")
-    // Test Case No: PROD_TC015
+    // Manual Test Case ID: TC635
     public void verifyDeleteProductFunctionality() {
         if (!isElementDisplayed(deleteButton)) {
             throw new SkipException("Delete button is not available or locator needs confirmation");
@@ -201,25 +201,25 @@ public class EasyQProductsTest {
     }
 
     @Test(priority = 16, description = "Verify delete confirmation")
-    // Test Case No: PROD_TC016
+    // Manual Test Case ID: TC636
     public void verifyDeleteConfirmation() {
         throw new SkipException("Requires disposable product record and confirmation dialog locator");
     }
 
     @Test(priority = 17, description = "Verify delete restricted if product in use")
-    // Test Case No: PROD_TC017
+    // Manual Test Case ID: TC637
     public void verifyDeleteRestrictedIfProductInUse() {
         throw new SkipException("Requires product linked to CAPA or another module");
     }
 
     @Test(priority = 18, description = "Verify product update reflects in other modules")
-    // Test Case No: PROD_TC018
+    // Manual Test Case ID: TC638
     public void verifyProductUpdateReflectsInOtherModules() {
         throw new SkipException("Requires product linked to CAPA and update workflow");
     }
 
     @Test(priority = 19, description = "Verify duplicate product creation")
-    // Test Case No: PROD_TC019
+    // Manual Test Case ID: TC639
     public void verifyDuplicateProductCreation() {
         if (!isElementDisplayed(createButton)) {
             throw new SkipException("Create product button is not available or locator needs confirmation");

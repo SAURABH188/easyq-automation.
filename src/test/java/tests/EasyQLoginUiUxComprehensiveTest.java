@@ -10,11 +10,13 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
+import org.testng.Reporter;
 import org.testng.annotations.Test;
 import utils.ActionHelper;
 import utils.DynamicWorkflowHelper;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
@@ -30,10 +32,12 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     private final By eyeIcon = By.xpath("//*[name()='svg' or self::mat-icon or self::i or @role='button'][ancestor::*[.//input[@type='password' or @type='text']]]");
     private final By validationMessage = By.xpath("//*[contains(@class,'error') or contains(@class,'invalid') or contains(@class,'danger') or contains(@class,'snack') or contains(@class,'toast') or contains(normalize-space(.),'required') or contains(normalize-space(.),'Required') or contains(normalize-space(.),'Invalid') or contains(normalize-space(.),'invalid') or contains(normalize-space(.),'incorrect')]");
     private final By resetEmailField = By.xpath("//input[@type='email' or contains(@placeholder,'Email') or contains(@formcontrolname,'email')]");
-    private final By resetSubmitButton = By.xpath("//button[contains(normalize-space(.),'Submit') or contains(normalize-space(.),'Send') or contains(normalize-space(.),'Reset')]");
+    private final By resetContinueButton = By.xpath("//button[contains(normalize-space(.),'Continue') or contains(normalize-space(.),'Submit') or contains(normalize-space(.),'Send') or contains(normalize-space(.),'Reset')]");
+    private final By newPasswordField = By.xpath("(//input[@type='password' or contains(translate(@placeholder,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'new password') or contains(translate(@formcontrolname,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'newpassword')])[1]");
+    private final By confirmPasswordField = By.xpath("//input[@type='password' and (contains(translate(@placeholder,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'confirm') or contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'confirm') or contains(translate(@formcontrolname,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'confirm'))]");
 
     @Test(priority = 1, description = "Validate Login Page Load")
-    // Test Case No: LOGIN_UIUX_TC001
+    // Manual Test Case ID: TC001
     public void verifyLoginPageLoadsSuccessfully() {
         ActionHelper action = action();
 
@@ -44,7 +48,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 2, description = "Validate Login Page UI Elements")
-    // Test Case No: LOGIN_UIUX_TC002
+    // Manual Test Case ID: TC006, TC011-TC015
     public void verifyAllLoginUiElementsAreVisible() {
         ActionHelper action = action();
 
@@ -57,7 +61,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 3, description = "Verify input labels/placeholders and accessibility hints")
-    // Test Case No: LOGIN_UIUX_TC003
+    // Manual Test Case ID: TC013, TC014
     public void verifyFieldPlaceholdersAndLabels() {
         WebElement emailInput = action().waitForVisible(emailField);
         WebElement passwordInput = action().waitForVisible(passwordField);
@@ -67,7 +71,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 4, description = "Verify login button visibility and clickable state")
-    // Test Case No: LOGIN_UIUX_TC004
+    // Manual Test Case ID: TC015
     public void verifyLoginButtonIsUsable() {
         WebElement button = action().waitForVisible(loginButton);
 
@@ -77,7 +81,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 5, description = "Verify keyboard tab order")
-    // Test Case No: LOGIN_UIUX_TC005
+    // Manual Test Case ID: TC016-TC018
     public void verifyKeyboardTabOrder() {
         ActionHelper action = action();
 
@@ -92,7 +96,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 6, description = "Verify password is masked by default")
-    // Test Case No: LOGIN_UIUX_TC006
+    // Manual Test Case ID: TC032, TC052
     public void verifyPasswordMaskedByDefault() {
         WebElement passwordInput = action().waitForVisible(passwordField);
 
@@ -100,7 +104,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 7, description = "Verify password visibility eye icon toggles value")
-    // Test Case No: LOGIN_UIUX_TC007
+    // Manual Test Case ID: TC021, TC033, TC053, TC054
     public void verifyPasswordVisibilityToggle() {
         ActionHelper action = action();
 
@@ -117,29 +121,29 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 8, description = "Verify Forgot Password link visibility")
-    // Test Case No: LOGIN_UIUX_TC008
+    // Manual Test Case ID: TC022
     public void verifyForgotPasswordLinkVisible() {
         Assert.assertTrue(action().waitForVisible(forgotPasswordLink).isDisplayed(),
                 "Forgot Password link should be visible");
     }
 
     @Test(priority = 9, description = "Verify Forgot Password navigation")
-    // Test Case No: LOGIN_UIUX_TC009
+    // Manual Test Case ID: TC023, TC041
     public void verifyForgotPasswordNavigation() {
-        openForgotPasswordPage();
+        openForgotPasswordPageWithEmail(getAdminEmail());
 
         Assert.assertTrue(currentPageContains("forgot", "reset", "password"),
                 "Forgot Password page should be displayed");
     }
 
     @Test(priority = 10, description = "Verify version display")
-    // Test Case No: LOGIN_UIUX_TC010
+    // Manual Test Case ID: TC024, TC025
     public void verifyVersionTextDisplayed() {
         Assert.assertTrue(action().waitForVisible(versionText).isDisplayed(), "Version/beta text should be visible");
     }
 
     @Test(priority = 11, description = "Verify login page responsive layout")
-    // Test Case No: LOGIN_UIUX_TC011
+    // Manual Test Case ID: TC008, TC018
     public void verifyResponsiveLoginLayout() {
         assertLoginPageVisibleAtSize(1366, 768);
         assertLoginPageVisibleAtSize(1024, 768);
@@ -147,7 +151,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 12, description = "Verify login page refresh stability")
-    // Test Case No: LOGIN_UIUX_TC012
+    // Manual Test Case ID: TC002
     public void verifyLoginPageRefreshStability() {
         driver.navigate().refresh();
         action().waitAfterAction();
@@ -157,7 +161,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 13, description = "Verify email field accepts valid input")
-    // Test Case No: LOGIN_UIUX_TC013
+    // Manual Test Case ID: TC026
     public void verifyEmailFieldAcceptsValidInput() {
         action().clearAndType(emailField, getAdminEmail());
 
@@ -166,7 +170,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 14, description = "Verify invalid email format validation")
-    // Test Case No: LOGIN_UIUX_TC014
+    // Manual Test Case ID: TC027
     public void verifyInvalidEmailFormatValidation() {
         ActionHelper action = action();
 
@@ -178,7 +182,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 15, description = "Verify mandatory email validation")
-    // Test Case No: LOGIN_UIUX_TC015
+    // Manual Test Case ID: TC028
     public void verifyMandatoryEmailValidation() {
         ActionHelper action = action();
 
@@ -189,7 +193,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 16, description = "Verify trimming/safe handling of email spaces")
-    // Test Case No: LOGIN_UIUX_TC016
+    // Manual Test Case ID: TC029
     public void verifyEmailSpacesHandledSafely() {
         ActionHelper action = action();
 
@@ -202,7 +206,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 17, description = "Verify edge case email input")
-    // Test Case No: LOGIN_UIUX_TC017
+    // Manual Test Case ID: TC030
     public void verifyEdgeCaseEmailInput() {
         String edgeCaseEmail = "qa.test+easyq@easyqsolutions.com";
 
@@ -213,7 +217,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 18, description = "Verify password field accepts normal input")
-    // Test Case No: LOGIN_UIUX_TC018
+    // Manual Test Case ID: TC031
     public void verifyPasswordFieldAcceptsInput() {
         action().clearAndType(passwordField, "Test@123");
 
@@ -222,7 +226,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 19, description = "Verify password special character handling")
-    // Test Case No: LOGIN_UIUX_TC019
+    // Manual Test Case ID: TC059, TC060
     public void verifyPasswordSpecialCharacters() {
         action().clearAndType(passwordField, "@#123!$%");
 
@@ -231,7 +235,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 20, description = "Verify password long input boundary")
-    // Test Case No: LOGIN_UIUX_TC020
+    // Manual Test Case ID: TC035, TC057, TC058
     public void verifyPasswordLongInputBoundary() {
         String longPassword = "Aa1@" + "Password".repeat(20);
 
@@ -242,7 +246,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 21, description = "Verify mandatory password validation")
-    // Test Case No: LOGIN_UIUX_TC021
+    // Manual Test Case ID: TC034, TC055
     public void verifyMandatoryPasswordValidation() {
         ActionHelper action = action();
 
@@ -253,7 +257,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 22, description = "Verify login with empty fields")
-    // Test Case No: LOGIN_UIUX_TC022
+    // Manual Test Case ID: TC038, TC056, TC064
     public void verifyLoginWithEmptyFields() {
         action().click(loginButton);
 
@@ -261,7 +265,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 23, description = "Verify login with only email")
-    // Test Case No: LOGIN_UIUX_TC023
+    // Manual Test Case ID: TC039, TC065
     public void verifyLoginWithOnlyEmail() {
         ActionHelper action = action();
 
@@ -272,7 +276,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 24, description = "Verify login with only password")
-    // Test Case No: LOGIN_UIUX_TC024
+    // Manual Test Case ID: TC039, TC066
     public void verifyLoginWithOnlyPassword() {
         ActionHelper action = action();
 
@@ -283,7 +287,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 25, description = "Verify invalid credentials")
-    // Test Case No: LOGIN_UIUX_TC025
+    // Manual Test Case ID: TC037, TC062, TC063
     public void verifyLoginWithInvalidCredentials() {
         ActionHelper action = action();
 
@@ -295,7 +299,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 26, description = "Verify login with valid credentials")
-    // Test Case No: LOGIN_UIUX_TC026
+    // Manual Test Case ID: TC036, TC061
     public void verifyLoginWithValidCredentials() {
         loginWithValidCredentials();
 
@@ -303,7 +307,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 27, description = "Verify login using Enter key")
-    // Test Case No: LOGIN_UIUX_TC027
+    // Manual Test Case ID: TC040, TC067
     public void verifyLoginUsingEnterKey() {
         ActionHelper action = action();
 
@@ -315,7 +319,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 28, description = "Verify redirect after successful login")
-    // Test Case No: LOGIN_UIUX_TC028
+    // Manual Test Case ID: TC046, TC074
     public void verifyRedirectAfterSuccessfulLogin() {
         loginWithValidCredentials();
 
@@ -325,7 +329,7 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
     }
 
     @Test(priority = 29, description = "Verify browser back button after login")
-    // Test Case No: LOGIN_UIUX_TC029
+    // Manual Test Case ID: TC049, TC077
     public void verifyBackButtonAfterLogin() {
         loginWithValidCredentials();
         Assert.assertTrue(waitUntilLoginSucceeded(), "Login should complete successfully");
@@ -337,42 +341,111 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
                 "Back button should not expose an active login page after successful login");
     }
 
-    @Test(priority = 30, description = "Verify forgot password empty email validation")
-    // Test Case No: LOGIN_UIUX_TC030
+    @Test(priority = 30, description = "Verify forgot password prefills email from login page")
+    // Manual Test Case ID: TC041, TC068
+    public void verifyForgotPasswordPrefillsEmailFromLoginPage() {
+        String email = getAdminEmail();
+
+        openForgotPasswordPageWithEmail(email);
+
+        Assert.assertEquals(getInputValue(resetEmailField).trim(), email,
+                "Forgot Password page should prefill the email entered on login page");
+    }
+
+    @Test(priority = 31, description = "Verify forgot password email cannot be edited")
+    // Manual Test Case ID: TC041, TC068
+    public void verifyForgotPasswordEmailCannotBeEdited() {
+        String email = getAdminEmail();
+
+        openForgotPasswordPageWithEmail(email);
+
+        Assert.assertTrue(isResetEmailLocked(email), "Prefilled reset email should not be editable");
+    }
+
+    @Test(priority = 32, description = "Verify forgot password empty email validation")
+    // Manual Test Case ID: TC044, TC071
     public void verifyForgotPasswordEmptyEmailValidation() {
         openForgotPasswordPage();
-        action().click(resetSubmitButton);
+        action().click(resetContinueButton);
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Empty reset email should show validation");
     }
 
-    @Test(priority = 31, description = "Verify forgot password invalid email validation")
-    // Test Case No: LOGIN_UIUX_TC031
+    @Test(priority = 33, description = "Verify forgot password invalid email validation")
+    // Manual Test Case ID: TC043, TC070
     public void verifyForgotPasswordInvalidEmailValidation() {
-        ActionHelper action = action();
+        openForgotPasswordPageWithEmail("invalid-email-format");
+        action().click(resetContinueButton);
 
-        openForgotPasswordPage();
-        action.clearAndType(resetEmailField, "invalid-email-format");
-        action.click(resetSubmitButton);
-
-        Assert.assertTrue(validationDisplayedOrLoginRemains(), "Invalid reset email should show validation");
+        Assert.assertTrue(validationDisplayedOrLoginRemains(), "Invalid prefilled reset email should show validation");
     }
 
-    @Test(priority = 32, description = "Verify forgot password valid email request")
-    // Test Case No: LOGIN_UIUX_TC032
+    @Test(priority = 34, description = "Verify forgot password valid email request")
+    // Manual Test Case ID: TC042, TC069
     public void verifyForgotPasswordValidEmailRequest() {
-        ActionHelper action = action();
+        String email = getAdminEmail();
 
-        openForgotPasswordPage();
-        action.clearAndType(resetEmailField, getAdminEmail());
-        action.click(resetSubmitButton);
+        openForgotPasswordPageWithEmail(email);
+        Assert.assertEquals(getInputValue(resetEmailField).trim(), email,
+                "Forgot Password page should show the selected reset email");
+        action().click(resetContinueButton);
 
-        Assert.assertTrue(currentPageContains("sent", "success", "email", "forgot", "reset"),
-                "Valid reset email request should be accepted or keep user on reset flow");
+        Assert.assertTrue(resetEmailSentMessageDisplayed(), "Valid reset email request should show email sent confirmation");
     }
 
-    @Test(priority = 33, description = "Verify login response time")
-    // Test Case No: LOGIN_UIUX_TC033
+    @Test(priority = 35, description = "Verify reset link opens password update form")
+    // Manual Test Case ID: TC072
+    public void verifyResetLinkOpensPasswordUpdateForm() {
+        if (!openOptionalResetLink("EASYQ_RESET_LINK")) {
+            Reporter.log("EASYQ_RESET_LINK not supplied. TC042/TC069 verify reset email generation; TC072 needs latest inbox link.");
+            return;
+        }
+
+        Assert.assertTrue(action().waitForVisible(resetEmailField).isDisplayed(), "Reset form should show email field");
+        Assert.assertTrue(action().waitForVisible(newPasswordField).isDisplayed(), "Reset form should show new password field");
+        Assert.assertTrue(action().waitForVisible(confirmPasswordField).isDisplayed(), "Reset form should show confirm password field");
+    }
+
+    @Test(priority = 36, description = "Verify new password update from valid reset link")
+    // Manual Test Case ID: TC072
+    public void verifyNewPasswordCanBeUpdatedFromValidResetLinkWhenEnabled() {
+        if (!openOptionalResetLink("EASYQ_RESET_LINK")) {
+            Reporter.log("EASYQ_RESET_LINK not supplied. Password update flow requires the latest reset email link.");
+            return;
+        }
+        if (!Boolean.parseBoolean(String.valueOf(config.get("allowPasswordResetMutation")))) {
+            Reporter.log("allowPasswordResetMutation=false. Form is verified, but real password update is intentionally not submitted.");
+            Assert.assertTrue(action().waitForVisible(newPasswordField).isDisplayed(),
+                    "Reset password form should be available before password update is enabled");
+            return;
+        }
+
+        String newPassword = config.getOptionalSecret("EASYQ_NEW_PASSWORD");
+        Assert.assertTrue(newPassword != null && !newPassword.isBlank(),
+                "EASYQ_NEW_PASSWORD is required when allowPasswordResetMutation=true");
+
+        action().clearAndType(newPasswordField, newPassword);
+        action().clearAndType(confirmPasswordField, newPassword);
+        action().click(resetContinueButton);
+
+        Assert.assertTrue(currentPageContains("success", "updated", "password", "login"),
+                "Submitting matching passwords should complete the reset flow");
+    }
+
+    @Test(priority = 37, description = "Verify expired reset link handling")
+    // Manual Test Case ID: TC045, TC073
+    public void verifyExpiredResetLinkHandlingWhenAvailable() {
+        if (!openOptionalResetLink("EASYQ_EXPIRED_RESET_LINK")) {
+            Reporter.log("EASYQ_EXPIRED_RESET_LINK not supplied. Add an expired link to validate TC045/TC073.");
+            return;
+        }
+
+        Assert.assertTrue(currentPageContains("expired", "invalid", "link", "login", "password"),
+                "Expired reset link should show an error or safe recovery page");
+    }
+
+    @Test(priority = 38, description = "Verify login response time")
+    // Manual Test Case ID: TC050, TC078
     public void verifyLoginResponseTime() {
         long startTime = System.currentTimeMillis();
 
@@ -384,8 +457,8 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
         Assert.assertTrue(totalTime <= 30000, "Login should complete within 30 seconds");
     }
 
-    @Test(priority = 34, description = "Verify login page after clearing browser storage")
-    // Test Case No: LOGIN_UIUX_TC034
+    @Test(priority = 39, description = "Verify login page after clearing browser storage")
+    // Manual Test Case ID: TC005
     public void verifyLoginPageAfterClearingStorage() {
         driver.manage().deleteAllCookies();
         ((JavascriptExecutor) driver).executeScript("window.localStorage.clear(); window.sessionStorage.clear();");
@@ -396,8 +469,8 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
                 "Login page should load after clearing cookies and storage");
     }
 
-    @Test(priority = 35, description = "Verify login page has no severe browser console errors")
-    // Test Case No: LOGIN_UIUX_TC035
+    @Test(priority = 40, description = "Verify login page has no severe browser console errors")
+    // Manual Test Case ID: TC010
     public void verifyNoSevereConsoleErrorsOnLoginPage() {
         List<LogEntry> severeLogs = driver.manage().logs().get(LogType.BROWSER).getAll()
                 .stream()
@@ -425,6 +498,52 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
                 currentDriver.getCurrentUrl().toLowerCase().contains("forgot")
                         || currentPageContains("forgot", "reset", "password")
         );
+        action().waitForVisible(resetEmailField);
+    }
+
+    private void openForgotPasswordPageWithEmail(String email) {
+        action().clearAndType(emailField, email);
+        openForgotPasswordPage();
+    }
+
+    private boolean openOptionalResetLink(String key) {
+        String resetLink = config.getOptionalSecret(key);
+        if (resetLink == null || resetLink.isBlank()) {
+            return false;
+        }
+
+        ((JavascriptExecutor) driver).executeScript("window.open(arguments[0], '_blank');", resetLink);
+        List<String> tabs = new ArrayList<>(driver.getWindowHandles());
+        driver.switchTo().window(tabs.get(tabs.size() - 1));
+        action().waitAfterAction();
+        new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait"))).until(currentDriver ->
+                DynamicWorkflowHelper.getBodyText(currentDriver).trim().length() > 0
+                        || currentDriver.getCurrentUrl().toLowerCase().contains("reset")
+                        || currentDriver.getCurrentUrl().toLowerCase().contains("forgot")
+        );
+        return true;
+    }
+
+    private String getInputValue(By locator) {
+        return String.valueOf(action().waitForVisible(locator).getAttribute("value"));
+    }
+
+    private boolean isResetEmailLocked(String expectedEmail) {
+        WebElement resetEmail = action().waitForVisible(resetEmailField);
+        String beforeValue = String.valueOf(resetEmail.getAttribute("value"));
+        boolean lockedByAttribute = resetEmail.getAttribute("readonly") != null
+                || resetEmail.getAttribute("disabled") != null
+                || !resetEmail.isEnabled();
+
+        try {
+            resetEmail.sendKeys(".edited");
+            action().waitAfterAction();
+        } catch (RuntimeException ignored) {
+            lockedByAttribute = true;
+        }
+
+        String afterValue = String.valueOf(driver.findElement(resetEmailField).getAttribute("value"));
+        return lockedByAttribute || beforeValue.equals(afterValue) || expectedEmail.equalsIgnoreCase(afterValue.trim());
     }
 
     private void assertLoginPageVisibleAtSize(int width, int height) {
@@ -496,6 +615,20 @@ public class EasyQLoginUiUxComprehensiveTest extends BaseTest {
             ));
         } catch (RuntimeException exception) {
             return driver.getCurrentUrl().toLowerCase().contains("login");
+        }
+    }
+
+    private boolean resetEmailSentMessageDisplayed() {
+        try {
+            return new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait"))).until(currentDriver -> {
+                String bodyText = DynamicWorkflowHelper.getBodyText(currentDriver).toLowerCase();
+                return bodyText.contains("sent")
+                        || bodyText.contains("success")
+                        || bodyText.contains("inbox")
+                        || bodyText.contains("check your email");
+            });
+        } catch (RuntimeException exception) {
+            return false;
         }
     }
 

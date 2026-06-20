@@ -59,41 +59,41 @@ public class EasyQQualityPolicyTest {
     }
 
     @Test(priority = 1, description = "Verify Quality Policy module loads successfully")
-    // Test Case No: QPOL_TC001
+    // Manual Test Case ID: TC366
     public void verifyQualityPolicyModuleLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(qualityPolicyTitle)).isDisplayed(),
                 "Quality Policy module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify module loads with data")
-    // Test Case No: QPOL_TC002
+    // Manual Test Case ID: TC367
     public void verifyModuleLoadsWithData() {
         Assert.assertTrue(hasPolicyDataOrPageLoaded(), "Quality Policy should display policies or a valid empty state");
     }
 
     @Test(priority = 3, description = "Verify no UI break on page load")
-    // Test Case No: QPOL_TC003
+    // Manual Test Case ID: TC368
     public void verifyNoUiBreakOnPageLoad() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Quality Policy page body should be visible");
         Assert.assertTrue(driver.findElement(qualityPolicyTitle).isDisplayed(), "Quality Policy title should be visible");
     }
 
     @Test(priority = 4, description = "Verify module access for Admin")
-    // Test Case No: QPOL_TC004
+    // Manual Test Case ID: TC369
     public void verifyModuleAccessForAdmin() {
         Assert.assertTrue(driver.findElement(qualityPolicyTitle).isDisplayed(),
                 "Admin/current user should access Quality Policy module");
     }
 
     @Test(priority = 5, description = "Verify Initiate button is visible")
-    // Test Case No: QPOL_TC005
+    // Manual Test Case ID: TC370
     public void verifyInitiateButtonIsVisible() {
         Assert.assertTrue(isElementDisplayed(initiateButton) || driver.findElement(qualityPolicyTitle).isDisplayed(),
                 "Initiate button should be visible for authorized users");
     }
 
     @Test(priority = 6, description = "Verify clicking Initiate opens new document")
-    // Test Case No: QPOL_TC006
+    // Manual Test Case ID: TC371
     public void verifyClickingInitiateOpensNewDocument() {
         openInitiateFormIfAvailable();
 
@@ -102,7 +102,7 @@ public class EasyQQualityPolicyTest {
     }
 
     @Test(priority = 7, description = "Verify template selection option")
-    // Test Case No: QPOL_TC007
+    // Manual Test Case ID: TC372
     public void verifyTemplateSelectionOption() {
         openInitiateFormIfAvailable();
 
@@ -111,7 +111,7 @@ public class EasyQQualityPolicyTest {
     }
 
     @Test(priority = 8, description = "Verify create from scratch option")
-    // Test Case No: QPOL_TC008
+    // Manual Test Case ID: TC373
     public void verifyCreateFromScratchOption() {
         openInitiateFormIfAvailable();
 
@@ -120,49 +120,49 @@ public class EasyQQualityPolicyTest {
     }
 
     @Test(priority = 9, description = "Verify draft document is editable")
-    // Test Case No: QPOL_TC009
+    // Manual Test Case ID: TC374
     public void verifyDraftDocumentIsEditable() {
         Assert.assertTrue(isElementDisplayed(editButton) || hasPolicyDataOrPageLoaded(),
                 "Draft policy edit option should be visible when draft exists");
     }
 
     @Test(priority = 10, description = "Verify status changes to Under Review")
-    // Test Case No: QPOL_TC010
+    // Manual Test Case ID: TC375
     public void verifyStatusChangesToUnderReview() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasPolicyDataOrPageLoaded(),
                 "Under Review/status should display when policy records exist");
     }
 
     @Test(priority = 11, description = "Verify status changes to Approved")
-    // Test Case No: QPOL_TC011
+    // Manual Test Case ID: TC376
     public void verifyStatusChangesToApproved() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasPolicyDataOrPageLoaded(),
                 "Approved/status should display when policy records exist");
     }
 
     @Test(priority = 12, description = "Verify Admin/Doc Controller can create policy")
-    // Test Case No: QPOL_TC012
+    // Manual Test Case ID: TC377
     public void verifyAdminDocControllerCanCreatePolicy() {
         Assert.assertTrue(isElementDisplayed(initiateButton) || driver.findElement(qualityPolicyTitle).isDisplayed(),
                 "Admin/Doc Controller should be allowed to access policy creation based on permissions");
     }
 
     @Test(priority = 13, description = "Verify view access for other roles")
-    // Test Case No: QPOL_TC013
+    // Manual Test Case ID: TC378
     public void verifyViewAccessForOtherRoles() {
         Assert.assertTrue(driver.findElement(qualityPolicyTitle).isDisplayed(),
                 "Quality Policy should be viewable when user has access");
     }
 
     @Test(priority = 14, description = "Verify status reflects correctly")
-    // Test Case No: QPOL_TC014
+    // Manual Test Case ID: TC379
     public void verifyStatusReflectsCorrectly() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasPolicyDataOrPageLoaded(),
                 "Policy status should reflect correctly in UI");
     }
 
     @Test(priority = 15, description = "Verify empty policy submission handling")
-    // Test Case No: QPOL_TC015
+    // Manual Test Case ID: TC380
     public void verifyEmptyPolicySubmissionHandling() {
         openInitiateFormIfAvailable();
         clickFirstAvailable(submitButton, saveButton);
@@ -172,148 +172,148 @@ public class EasyQQualityPolicyTest {
     }
 
     @Test(priority = 16, description = "Verify long content handling")
-    // Test Case No: QPOL_TC016
+    // Manual Test Case ID: TC381
     public void verifyLongContentHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Quality Policy should handle long content without UI break");
     }
 
     @Test(priority = 17, description = "Verify multiple reviewers handling")
-    // Test Case No: QPOL_TC017
+    // Manual Test Case ID: TC382
     public void verifyMultipleReviewersHandling() {
         Assert.assertTrue(hasPolicyDataOrPageLoaded(), "Quality Policy page should remain stable for multiple-reviewer data");
     }
 
     @Test(priority = 18, description = "Verify saving policy as Draft")
-    // Test Case No: QPOL_TC018
+    // Manual Test Case ID: TC383
     public void verifySavingPolicyAsDraft() {
         throw new SkipException("Requires policy form data and draft save workflow");
     }
 
     @Test(priority = 19, description = "Verify draft persists after refresh")
-    // Test Case No: QPOL_TC019
+    // Manual Test Case ID: TC384
     public void verifyDraftPersistsAfterRefresh() {
         throw new SkipException("Requires saved draft policy record");
     }
 
     @Test(priority = 20, description = "Verify sending document for review")
-    // Test Case No: QPOL_TC020
+    // Manual Test Case ID: TC385
     public void verifySendingDocumentForReview() {
         throw new SkipException("Requires draft policy and send-for-review workflow");
     }
 
     @Test(priority = 21, description = "Verify multiple reviewers can be assigned")
-    // Test Case No: QPOL_TC021
+    // Manual Test Case ID: TC386
     public void verifyMultipleReviewersCanBeAssigned() {
         throw new SkipException("Requires reviewer users and assignment control locators");
     }
 
     @Test(priority = 22, description = "Verify only one approver can be assigned")
-    // Test Case No: QPOL_TC022
+    // Manual Test Case ID: TC387
     public void verifyOnlyOneApproverCanBeAssigned() {
         throw new SkipException("Requires approver user data and assignment control locators");
     }
 
     @Test(priority = 23, description = "Verify reviewer can access assigned document")
-    // Test Case No: QPOL_TC023
+    // Manual Test Case ID: TC388
     public void verifyReviewerCanAccessAssignedDocument() {
         throw new SkipException("Requires reviewer credentials and assigned policy task");
     }
 
     @Test(priority = 24, description = "Verify reviewer can edit document")
-    // Test Case No: QPOL_TC024
+    // Manual Test Case ID: TC389
     public void verifyReviewerCanEditDocument() {
         throw new SkipException("Requires reviewer credentials and review-stage policy");
     }
 
     @Test(priority = 25, description = "Verify reviewer can review document")
-    // Test Case No: QPOL_TC025
+    // Manual Test Case ID: TC390
     public void verifyReviewerCanReviewDocument() {
         throw new SkipException("Requires reviewer credentials and review workflow");
     }
 
     @Test(priority = 26, description = "Verify approver can access document")
-    // Test Case No: QPOL_TC026
+    // Manual Test Case ID: TC391
     public void verifyApproverCanAccessDocument() {
         throw new SkipException("Requires approver credentials and assigned policy task");
     }
 
     @Test(priority = 27, description = "Verify only assigned approver can approve")
-    // Test Case No: QPOL_TC027
+    // Manual Test Case ID: TC392
     public void verifyOnlyAssignedApproverCanApprove() {
         throw new SkipException("Requires assigned and non-assigned approver credentials");
     }
 
     @Test(priority = 28, description = "Verify only one active policy")
-    // Test Case No: QPOL_TC028
+    // Manual Test Case ID: TC393
     public void verifyOnlyOneActivePolicy() {
         throw new SkipException("Requires approving a new policy and checking active policy state");
     }
 
     @Test(priority = 29, description = "Verify old policy becomes inactive")
-    // Test Case No: QPOL_TC029
+    // Manual Test Case ID: TC394
     public void verifyOldPolicyBecomesInactive() {
         throw new SkipException("Requires new approved policy and previous policy record");
     }
 
     @Test(priority = 30, description = "Verify Move to Draft creates new version")
-    // Test Case No: QPOL_TC030
+    // Manual Test Case ID: TC395
     public void verifyMoveToDraftCreatesNewVersion() {
         throw new SkipException("Requires approved policy and move-to-draft workflow");
     }
 
     @Test(priority = 31, description = "Verify new version copies data")
-    // Test Case No: QPOL_TC031
+    // Manual Test Case ID: TC396
     public void verifyNewVersionCopiesData() {
         throw new SkipException("Requires move-to-draft/versioning workflow");
     }
 
     @Test(priority = 32, description = "Verify workflow repeats for new version")
-    // Test Case No: QPOL_TC032
+    // Manual Test Case ID: TC397
     public void verifyWorkflowRepeatsForNewVersion() {
         throw new SkipException("Requires new draft version and review workflow");
     }
 
     @Test(priority = 33, description = "Verify Assignee cannot initiate policy")
-    // Test Case No: QPOL_TC033
+    // Manual Test Case ID: TC398
     public void verifyAssigneeCannotInitiatePolicy() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 34, description = "Verify restricted access for Assignee")
-    // Test Case No: QPOL_TC034
+    // Manual Test Case ID: TC399
     public void verifyRestrictedAccessForAssignee() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 35, description = "Verify policy content is saved correctly")
-    // Test Case No: QPOL_TC035
+    // Manual Test Case ID: TC400
     public void verifyPolicyContentIsSavedCorrectly() {
         throw new SkipException("Requires policy save workflow with unique test data");
     }
 
     @Test(priority = 36, description = "PDF Flow - Verify only Admin and Document Controller can initiate Quality Policy")
-    // Test Case No: QPOL_TC036
+    // Manual Test Case ID: TC366-TC400
     public void verifyPdfFlowOnlyAdminDocControllerCanInitiateQualityPolicy() {
         Assert.assertTrue(isElementDisplayed(initiateButton) || driver.findElement(qualityPolicyTitle).isDisplayed(),
                 "Admin/Document Controller should be able to initiate Quality Policy when authorized");
     }
 
     @Test(priority = 37, description = "PDF Flow - Verify Quality Policy Draft to Under Review to Approved status path")
-    // Test Case No: QPOL_TC037
+    // Manual Test Case ID: TC366-TC400
     public void verifyPdfFlowQualityPolicyStatusPath() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasPolicyDataOrPageLoaded(),
                 "Quality Policy should follow Draft to Under Review to Approved status flow when workflow data exists");
     }
 
     @Test(priority = 38, description = "PDF Flow - Verify one active Quality Policy rule")
-    // Test Case No: QPOL_TC038
+    // Manual Test Case ID: TC366-TC400
     public void verifyPdfFlowOneActiveQualityPolicyRule() {
         throw new SkipException("Requires multiple approved Quality Policy records to validate only one active policy");
     }
 
     @Test(priority = 39, description = "PDF Flow - Verify Move to Draft creates copy for new version")
-    // Test Case No: QPOL_TC039
+    // Manual Test Case ID: TC366-TC400
     public void verifyPdfFlowMoveToDraftCreatesCopyForNewVersion() {
         throw new SkipException("Requires approved Quality Policy and Move to Draft workflow");
     }

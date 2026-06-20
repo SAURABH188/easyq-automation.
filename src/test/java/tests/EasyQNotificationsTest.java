@@ -55,7 +55,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 1, description = "Verify notification panel opens on clicking notification icon")
-    // Test Case No: NOTIF_TC001
+    // Manual Test Case ID: TC204
     public void verifyNotificationPanelOpensOnClickingNotificationIcon() {
         openNotificationPanel();
 
@@ -64,7 +64,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 2, description = "Verify panel toggle behavior")
-    // Test Case No: NOTIF_TC002
+    // Manual Test Case ID: TC205
     public void verifyPanelToggleBehavior() {
         openNotificationPanel();
         boolean opened = isElementDisplayed(notificationPanel) || isElementDisplayed(notificationTitle);
@@ -76,7 +76,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 3, description = "Verify panel loads without error")
-    // Test Case No: NOTIF_TC003
+    // Manual Test Case ID: TC206
     public void verifyPanelLoadsWithoutError() {
         openNotificationPanel();
 
@@ -84,7 +84,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 4, description = "Verify panel UI renders properly")
-    // Test Case No: NOTIF_TC004
+    // Manual Test Case ID: TC207
     public void verifyPanelUiRendersProperly() {
         openNotificationPanel();
 
@@ -92,7 +92,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 5, description = "Verify notifications are displayed")
-    // Test Case No: NOTIF_TC005
+    // Manual Test Case ID: TC208
     public void verifyNotificationsAreDisplayed() {
         openNotificationPanel();
 
@@ -100,7 +100,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 6, description = "Verify empty state when no notifications")
-    // Test Case No: NOTIF_TC006
+    // Manual Test Case ID: TC209
     public void verifyEmptyStateWhenNoNotifications() {
         openNotificationPanel();
 
@@ -109,7 +109,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 7, description = "Verify Notifications title is displayed")
-    // Test Case No: NOTIF_TC007
+    // Manual Test Case ID: TC210
     public void verifyNotificationsTitleIsDisplayed() {
         openNotificationPanel();
 
@@ -117,7 +117,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 8, description = "Verify title consistency after refresh")
-    // Test Case No: NOTIF_TC008
+    // Manual Test Case ID: TC211
     public void verifyTitleConsistencyAfterRefresh() {
         openNotificationPanel();
         String beforeRefresh = isElementDisplayed(notificationTitle) ? driver.findElement(notificationTitle).getText() : "";
@@ -131,7 +131,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 9, description = "Verify user initials/icon is displayed")
-    // Test Case No: NOTIF_TC009
+    // Manual Test Case ID: TC212
     public void verifyUserInitialsIconIsDisplayed() {
         openNotificationPanel();
 
@@ -140,7 +140,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 10, description = "Verify initials match logged-in user")
-    // Test Case No: NOTIF_TC010
+    // Manual Test Case ID: TC213
     public void verifyInitialsMatchLoggedInUser() {
         openNotificationPanel();
 
@@ -149,7 +149,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 11, description = "Verify notification message text is visible")
-    // Test Case No: NOTIF_TC011
+    // Manual Test Case ID: TC214
     public void verifyNotificationMessageTextIsVisible() {
         openNotificationPanel();
 
@@ -157,7 +157,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 12, description = "Verify long message handling")
-    // Test Case No: NOTIF_TC012
+    // Manual Test Case ID: TC215
     public void verifyLongMessageHandling() {
         openNotificationPanel();
 
@@ -166,7 +166,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 13, description = "Verify message truncation if applicable")
-    // Test Case No: NOTIF_TC013
+    // Manual Test Case ID: TC216
     public void verifyMessageTruncationIfApplicable() {
         openNotificationPanel();
 
@@ -175,7 +175,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 14, description = "Verify timestamp is displayed")
-    // Test Case No: NOTIF_TC014
+    // Manual Test Case ID: TC217
     public void verifyTimestampIsDisplayed() {
         openNotificationPanel();
 
@@ -184,7 +184,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 15, description = "Verify timestamp format")
-    // Test Case No: NOTIF_TC015
+    // Manual Test Case ID: TC218
     public void verifyTimestampFormat() {
         openNotificationPanel();
         String bodyText = getBodyText();
@@ -194,13 +194,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 16, description = "Verify timestamp accuracy")
-    // Test Case No: NOTIF_TC016
+    // Manual Test Case ID: TC219
     public void verifyTimestampAccuracy() {
         throw new SkipException("Requires known notification event time for comparison");
     }
 
     @Test(priority = 17, description = "Verify unread indicator blue dot is visible")
-    // Test Case No: NOTIF_TC017
+    // Manual Test Case ID: TC220
     public void verifyUnreadIndicatorBlueDotIsVisible() {
         openNotificationPanel();
 
@@ -209,19 +209,19 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 18, description = "Verify indicator removed after reading")
-    // Test Case No: NOTIF_TC018
+    // Manual Test Case ID: TC221
     public void verifyIndicatorRemovedAfterReading() {
         throw new SkipException("Requires known unread notification and read-state behavior");
     }
 
     @Test(priority = 19, description = "Verify indicator persists for unread items")
-    // Test Case No: NOTIF_TC019
+    // Manual Test Case ID: TC222
     public void verifyIndicatorPersistsForUnreadItems() {
         throw new SkipException("Requires multiple unread notifications");
     }
 
     @Test(priority = 20, description = "Verify correct notification message is shown")
-    // Test Case No: NOTIF_TC020
+    // Manual Test Case ID: TC223
     public void verifyCorrectNotificationMessageIsShown() {
         openNotificationPanel();
 
@@ -229,13 +229,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 21, description = "Verify message content accuracy with action")
-    // Test Case No: NOTIF_TC021
+    // Manual Test Case ID: TC224
     public void verifyMessageContentAccuracyWithAction() {
         throw new SkipException("Requires triggering a known workflow action before validating notification message");
     }
 
     @Test(priority = 22, description = "Verify message formatting multi-line text")
-    // Test Case No: NOTIF_TC022
+    // Manual Test Case ID: TC225
     public void verifyMessageFormattingMultiLineText() {
         openNotificationPanel();
 
@@ -244,7 +244,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 23, description = "Verify text wrapping for long messages")
-    // Test Case No: NOTIF_TC023
+    // Manual Test Case ID: TC226
     public void verifyTextWrappingForLongMessages() {
         openNotificationPanel();
 
@@ -253,7 +253,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 24, description = "Verify different types of messages Approved, Pending, Review")
-    // Test Case No: NOTIF_TC024
+    // Manual Test Case ID: TC227
     public void verifyDifferentTypesOfMessages() {
         openNotificationPanel();
         String bodyText = getBodyText();
@@ -263,7 +263,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 25, description = "Verify correct label/content per message type")
-    // Test Case No: NOTIF_TC025
+    // Manual Test Case ID: TC228
     public void verifyCorrectLabelContentPerMessageType() {
         openNotificationPanel();
 
@@ -271,7 +271,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 26, description = "Verify multiple message types together")
-    // Test Case No: NOTIF_TC026
+    // Manual Test Case ID: TC229
     public void verifyMultipleMessageTypesTogether() {
         openNotificationPanel();
 
@@ -279,7 +279,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 27, description = "Verify notification relevance to logged-in user")
-    // Test Case No: NOTIF_TC027
+    // Manual Test Case ID: TC230
     public void verifyNotificationRelevanceToLoggedInUser() {
         openNotificationPanel();
 
@@ -287,7 +287,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 28, description = "Verify no irrelevant notifications shown")
-    // Test Case No: NOTIF_TC028
+    // Manual Test Case ID: TC231
     public void verifyNoIrrelevantNotificationsShown() {
         openNotificationPanel();
 
@@ -295,13 +295,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 29, description = "Verify relevance after role change")
-    // Test Case No: NOTIF_TC029
+    // Manual Test Case ID: TC232
     public void verifyRelevanceAfterRoleChange() {
         throw new SkipException("Requires changing user role and re-login with controlled notification data");
     }
 
     @Test(priority = 30, description = "Verify date format DD-MMM-YYYY")
-    // Test Case No: NOTIF_TC030
+    // Manual Test Case ID: TC233
     public void verifyDateFormatDdMmmYyyy() {
         openNotificationPanel();
         String bodyText = getBodyText();
@@ -311,7 +311,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 31, description = "Verify date consistency across notifications")
-    // Test Case No: NOTIF_TC031
+    // Manual Test Case ID: TC234
     public void verifyDateConsistencyAcrossNotifications() {
         openNotificationPanel();
 
@@ -319,7 +319,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 32, description = "Verify time format HH:MM AM/PM")
-    // Test Case No: NOTIF_TC032
+    // Manual Test Case ID: TC235
     public void verifyTimeFormatHhMmAmPm() {
         openNotificationPanel();
         String bodyText = getBodyText();
@@ -329,13 +329,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 33, description = "Verify time accuracy")
-    // Test Case No: NOTIF_TC033
+    // Manual Test Case ID: TC236
     public void verifyTimeAccuracy() {
         throw new SkipException("Requires known notification event time for comparison");
     }
 
     @Test(priority = 34, description = "Verify latest notification appears on top")
-    // Test Case No: NOTIF_TC034
+    // Manual Test Case ID: TC237
     public void verifyLatestNotificationAppearsOnTop() {
         openNotificationPanel();
 
@@ -343,13 +343,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 35, description = "Verify order after new notification")
-    // Test Case No: NOTIF_TC035
+    // Manual Test Case ID: TC238
     public void verifyOrderAfterNewNotification() {
         throw new SkipException("Requires triggering a new notification during test");
     }
 
     @Test(priority = 36, description = "Verify chronological order")
-    // Test Case No: NOTIF_TC036
+    // Manual Test Case ID: TC239
     public void verifyChronologicalOrder() {
         openNotificationPanel();
 
@@ -357,13 +357,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 37, description = "Verify same timestamp handling")
-    // Test Case No: NOTIF_TC037
+    // Manual Test Case ID: TC240
     public void verifySameTimestampHandling() {
         throw new SkipException("Requires notification data with same timestamp");
     }
 
     @Test(priority = 38, description = "Verify unread notifications show indicator")
-    // Test Case No: NOTIF_TC038
+    // Manual Test Case ID: TC241
     public void verifyUnreadNotificationsShowIndicator() {
         openNotificationPanel();
 
@@ -372,31 +372,31 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 39, description = "Verify indicator only for unread")
-    // Test Case No: NOTIF_TC039
+    // Manual Test Case ID: TC242
     public void verifyIndicatorOnlyForUnread() {
         throw new SkipException("Requires mixed read/unread notification data");
     }
 
     @Test(priority = 40, description = "Verify read notifications remove indicator")
-    // Test Case No: NOTIF_TC040
+    // Manual Test Case ID: TC243
     public void verifyReadNotificationsRemoveIndicator() {
         throw new SkipException("Requires known read notification data");
     }
 
     @Test(priority = 41, description = "Verify read status persistence")
-    // Test Case No: NOTIF_TC041
+    // Manual Test Case ID: TC244
     public void verifyReadStatusPersistence() {
         throw new SkipException("Requires known unread notification and read-state persistence validation");
     }
 
     @Test(priority = 42, description = "Verify clicking notification marks as read")
-    // Test Case No: NOTIF_TC042
+    // Manual Test Case ID: TC245
     public void verifyClickingNotificationMarksAsRead() {
         throw new SkipException("Requires known unread notification");
     }
 
     @Test(priority = 43, description = "Verify multiple clicks handling")
-    // Test Case No: NOTIF_TC043
+    // Manual Test Case ID: TC246
     public void verifyMultipleClicksHandling() {
         openNotificationPanel();
 
@@ -415,7 +415,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 44, description = "Verify clicking notification opens related module")
-    // Test Case No: NOTIF_TC044
+    // Manual Test Case ID: TC247
     public void verifyClickingNotificationOpensRelatedModule() {
         openNotificationPanel();
 
@@ -432,31 +432,31 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 45, description = "Verify correct module opens")
-    // Test Case No: NOTIF_TC045
+    // Manual Test Case ID: TC248
     public void verifyCorrectModuleOpens() {
         throw new SkipException("Requires notification with known expected target module");
     }
 
     @Test(priority = 46, description = "Verify correct redirection based on notification type")
-    // Test Case No: NOTIF_TC046
+    // Manual Test Case ID: TC249
     public void verifyCorrectRedirectionBasedOnNotificationType() {
         throw new SkipException("Known issue: notification type redirection is not navigating to the correct page/module");
     }
 
     @Test(priority = 47, description = "Verify invalid redirection handling")
-    // Test Case No: NOTIF_TC047
+    // Manual Test Case ID: TC250
     public void verifyInvalidRedirectionHandling() {
         throw new SkipException("Requires notification with invalid/broken target data");
     }
 
     @Test(priority = 48, description = "Verify multiple clicks behavior")
-    // Test Case No: NOTIF_TC048
+    // Manual Test Case ID: TC251
     public void verifyMultipleClicksBehavior() {
         verifyMultipleClicksHandling();
     }
 
     @Test(priority = 49, description = "Verify no duplicate navigation")
-    // Test Case No: NOTIF_TC049
+    // Manual Test Case ID: TC252
     public void verifyNoDuplicateNavigation() {
         openNotificationPanel();
 
@@ -474,7 +474,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 50, description = "Verify Show More button is visible")
-    // Test Case No: NOTIF_TC050
+    // Manual Test Case ID: TC253
     public void verifyShowMoreButtonIsVisible() {
         openNotificationPanel();
 
@@ -483,7 +483,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 51, description = "Verify clicking Show More loads notifications")
-    // Test Case No: NOTIF_TC051
+    // Manual Test Case ID: TC254
     public void verifyClickingShowMoreLoadsNotifications() {
         openNotificationPanel();
 
@@ -500,7 +500,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 52, description = "Verify no duplicate notifications")
-    // Test Case No: NOTIF_TC052
+    // Manual Test Case ID: TC255
     public void verifyNoDuplicateNotifications() {
         openNotificationPanel();
 
@@ -508,7 +508,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 53, description = "Verify pagination/infinite scroll behavior")
-    // Test Case No: NOTIF_TC053
+    // Manual Test Case ID: TC256
     public void verifyPaginationInfiniteScrollBehavior() {
         openNotificationPanel();
         scrollNotificationPanelToBottom();
@@ -518,7 +518,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 54, description = "Verify no duplicate notifications on load")
-    // Test Case No: NOTIF_TC054
+    // Manual Test Case ID: TC257
     public void verifyNoDuplicateNotificationsOnLoad() {
         openNotificationPanel();
 
@@ -526,7 +526,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 55, description = "Verify behavior when no notifications available")
-    // Test Case No: NOTIF_TC055
+    // Manual Test Case ID: TC258
     public void verifyBehaviorWhenNoNotificationsAvailable() {
         openNotificationPanel();
 
@@ -535,7 +535,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 56, description = "Verify system stability in empty state")
-    // Test Case No: NOTIF_TC056
+    // Manual Test Case ID: TC259
     public void verifySystemStabilityInEmptyState() {
         openNotificationPanel();
 
@@ -544,7 +544,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 57, description = "Verify proper message displayed No Notifications")
-    // Test Case No: NOTIF_TC057
+    // Manual Test Case ID: TC260
     public void verifyProperMessageDisplayedNoNotifications() {
         openNotificationPanel();
 
@@ -553,7 +553,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 58, description = "Verify UI does not break")
-    // Test Case No: NOTIF_TC058
+    // Manual Test Case ID: TC261
     public void verifyUiDoesNotBreak() {
         openNotificationPanel();
 
@@ -562,7 +562,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 59, description = "Verify vertical scrolling works")
-    // Test Case No: NOTIF_TC059
+    // Manual Test Case ID: TC262
     public void verifyVerticalScrollingWorks() {
         openNotificationPanel();
         scrollNotificationPanelToBottom();
@@ -572,7 +572,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 60, description = "Verify smooth scroll behavior")
-    // Test Case No: NOTIF_TC060
+    // Manual Test Case ID: TC263
     public void verifySmoothScrollBehavior() {
         openNotificationPanel();
         scrollNotificationPanelToBottom();
@@ -582,7 +582,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 61, description = "Verify scroll limit handling")
-    // Test Case No: NOTIF_TC061
+    // Manual Test Case ID: TC264
     public void verifyScrollLimitHandling() {
         openNotificationPanel();
         scrollNotificationPanelToBottom();
@@ -593,25 +593,25 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 62, description = "Verify notification content matches backend data")
-    // Test Case No: NOTIF_TC062
+    // Manual Test Case ID: TC265
     public void verifyNotificationContentMatchesBackendData() {
         throw new SkipException("Requires backend/API notification data for comparison");
     }
 
     @Test(priority = 63, description = "Verify mismatch handling")
-    // Test Case No: NOTIF_TC063
+    // Manual Test Case ID: TC266
     public void verifyMismatchHandling() {
         throw new SkipException("Requires controlled backend/UI notification mismatch");
     }
 
     @Test(priority = 64, description = "Verify real-time updates new notification appears")
-    // Test Case No: NOTIF_TC064
+    // Manual Test Case ID: TC267
     public void verifyRealTimeUpdatesNewNotificationAppears() {
         throw new SkipException("Requires triggering a new notification during open-panel test");
     }
 
     @Test(priority = 65, description = "Verify update after refresh")
-    // Test Case No: NOTIF_TC065
+    // Manual Test Case ID: TC268
     public void verifyUpdateAfterRefresh() {
         openNotificationPanel();
         driver.navigate().refresh();
@@ -622,13 +622,13 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 66, description = "Verify duplicate notification handling")
-    // Test Case No: NOTIF_TC066
+    // Manual Test Case ID: TC269
     public void verifyDuplicateNotificationHandling() {
         throw new SkipException("Requires duplicate notification test data");
     }
 
     @Test(priority = 67, description = "Verify no repeated entries on reload")
-    // Test Case No: NOTIF_TC067
+    // Manual Test Case ID: TC270
     public void verifyNoRepeatedEntriesOnReload() {
         openNotificationPanel();
         driver.navigate().refresh();
@@ -639,19 +639,19 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 68, description = "Verify long notification text handling")
-    // Test Case No: NOTIF_TC068
+    // Manual Test Case ID: TC271
     public void verifyLongNotificationTextHandling() {
         verifyTextWrappingForLongMessages();
     }
 
     @Test(priority = 69, description = "Verify text truncation if applicable")
-    // Test Case No: NOTIF_TC069
+    // Manual Test Case ID: TC272
     public void verifyTextTruncationIfApplicable() {
         verifyMessageTruncationIfApplicable();
     }
 
     @Test(priority = 70, description = "Verify special characters in notification")
-    // Test Case No: NOTIF_TC070
+    // Manual Test Case ID: TC273
     public void verifySpecialCharactersInNotification() {
         openNotificationPanel();
 
@@ -659,7 +659,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 71, description = "Verify no UI break due to special characters")
-    // Test Case No: NOTIF_TC071
+    // Manual Test Case ID: TC274
     public void verifyNoUiBreakDueToSpecialCharacters() {
         openNotificationPanel();
 
@@ -668,19 +668,19 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 72, description = "Verify multiple notifications with same timestamp")
-    // Test Case No: NOTIF_TC072
+    // Manual Test Case ID: TC275
     public void verifyMultipleNotificationsWithSameTimestamp() {
         throw new SkipException("Requires same-timestamp notification test data");
     }
 
     @Test(priority = 73, description = "Verify order consistency with same timestamp")
-    // Test Case No: NOTIF_TC073
+    // Manual Test Case ID: TC276
     public void verifyOrderConsistencyWithSameTimestamp() {
         throw new SkipException("Requires same-timestamp notification test data");
     }
 
     @Test(priority = 74, description = "Verify system behavior with large number of notifications")
-    // Test Case No: NOTIF_TC074
+    // Manual Test Case ID: TC277
     public void verifySystemBehaviorWithLargeNumberOfNotifications() {
         openNotificationPanel();
 
@@ -689,7 +689,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 75, description = "Verify list stability with large data")
-    // Test Case No: NOTIF_TC075
+    // Manual Test Case ID: TC278
     public void verifyListStabilityWithLargeData() {
         openNotificationPanel();
         scrollNotificationPanelToBottom();
@@ -699,7 +699,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 76, description = "PDF Flow - Verify notifications display assigned tasks and current status")
-    // Test Case No: NOTIF_TC076
+    // Manual Test Case ID: TC204-TC278
     public void verifyPdfFlowNotificationsDisplayAssignedTasksAndCurrentStatus() {
         openNotificationPanel();
         String bodyText = getBodyText();
@@ -712,7 +712,7 @@ public class EasyQNotificationsTest {
     }
 
     @Test(priority = 77, description = "PDF Flow - Verify notifications available for Admin Document Controller and Assignee")
-    // Test Case No: NOTIF_TC077
+    // Manual Test Case ID: TC204-TC278
     public void verifyPdfFlowNotificationsAvailableForAllRoles() {
         throw new SkipException("Requires Admin, Document Controller, and Assignee credentials");
     }

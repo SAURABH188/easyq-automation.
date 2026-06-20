@@ -75,7 +75,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 1, description = "Verify icon alignment")
-    // Test Case No: DASH_DTL_TC001
+    // Manual Test Case ID: TC104
     public void verifyIconAlignment() {
         List<WebElement> icons = driver.findElements(visibleIcon);
 
@@ -87,7 +87,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 2, description = "Verify MR name displayed")
-    // Test Case No: DASH_DTL_TC002
+    // Manual Test Case ID: TC105
     public void verifyMrNameDisplayed() {
         WebElement card = getCardOrSkip(managementReviewCard, "Management Review card is not available");
         Assert.assertTrue(card.getText().matches("(?s).*MR.*[A-Z][a-z]+.*") || card.getText().contains("--"),
@@ -95,13 +95,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 3, description = "Verify MR name accuracy")
-    // Test Case No: DASH_DTL_TC003
+    // Manual Test Case ID: TC106
     public void verifyMrNameAccuracy() {
         throw new SkipException("Requires backend/API expected MR name for comparison");
     }
 
     @Test(priority = 4, description = "Verify next MRM date")
-    // Test Case No: DASH_DTL_TC004
+    // Manual Test Case ID: TC107
     public void verifyNextMrmDate() {
         WebElement card = getCardOrSkip(managementReviewCard, "Management Review card is not available");
         Assert.assertTrue(card.getText().contains("Date") || card.getText().contains("--") || isElementDisplayed(nextMrmLabel),
@@ -109,14 +109,14 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 5, description = "Verify date correctness")
-    // Test Case No: DASH_DTL_TC005
+    // Manual Test Case ID: TC108
     public void verifyDateCorrectness() {
         Assert.assertTrue(isElementDisplayed(dateText) || getBodyText().contains("--"),
                 "Dashboard date should be displayed or show placeholder");
     }
 
     @Test(priority = 6, description = "Verify open action items count")
-    // Test Case No: DASH_DTL_TC006
+    // Manual Test Case ID: TC109
     public void verifyOpenActionItemsCount() {
         WebElement card = getCardOrSkip(managementReviewCard, "Management Review card is not available");
         Assert.assertTrue(card.getText().contains("Open Action Items") || card.getText().matches("(?s).*\\b\\d+\\b.*"),
@@ -124,20 +124,20 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 7, description = "Verify count update")
-    // Test Case No: DASH_DTL_TC007
+    // Manual Test Case ID: TC110
     public void verifyCountUpdate() {
         throw new SkipException("Requires changing Management Review data before dashboard refresh");
     }
 
     @Test(priority = 8, description = "Verify zero count handling")
-    // Test Case No: DASH_DTL_TC008
+    // Manual Test Case ID: TC111
     public void verifyZeroCountHandling() {
         Assert.assertTrue(isElementDisplayed(numericText) || getBodyText().contains("0"),
                 "Zero count should be displayed where applicable");
     }
 
     @Test(priority = 9, description = "Verify View button navigation")
-    // Test Case No: DASH_DTL_TC009
+    // Manual Test Case ID: TC112
     public void verifyViewButtonNavigation() {
         List<WebElement> viewButtons = driver.findElements(viewButton);
         if (viewButtons.isEmpty()) {
@@ -153,19 +153,19 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 10, description = "Verify navigation correctness")
-    // Test Case No: DASH_DTL_TC010
+    // Manual Test Case ID: TC113
     public void verifyNavigationCorrectness() {
         verifyViewButtonNavigation();
     }
 
     @Test(priority = 11, description = "Verify broken link handling")
-    // Test Case No: DASH_DTL_TC011
+    // Manual Test Case ID: TC114
     public void verifyBrokenLinkHandling() {
         throw new SkipException("Requires intentionally broken dashboard link or controlled invalid route");
     }
 
     @Test(priority = 12, description = "Verify date format")
-    // Test Case No: DASH_DTL_TC012
+    // Manual Test Case ID: TC115
     public void verifyDateFormat() {
         String bodyText = getBodyText();
         Assert.assertTrue(bodyText.matches("(?s).*(\\d{2}-[A-Za-z]{3}-\\d{4}|\\d{1,2}/\\d{1,2}/\\d{4}|--).*"),
@@ -173,7 +173,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 13, description = "Verify format consistency")
-    // Test Case No: DASH_DTL_TC013
+    // Manual Test Case ID: TC116
     public void verifyFormatConsistency() {
         String beforeRefresh = getBodyText();
         driver.navigate().refresh();
@@ -185,7 +185,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 14, description = "Verify In Draft count")
-    // Test Case No: DASH_DTL_TC014
+    // Manual Test Case ID: TC117
     public void verifyInDraftCount() {
         WebElement card = getCardOrSkip(documentsCard, "Documents card is not available");
         Assert.assertTrue(card.getText().contains("In Draft") || card.getText().matches("(?s).*\\b\\d+\\b.*"),
@@ -193,20 +193,20 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 15, description = "Verify In Draft update")
-    // Test Case No: DASH_DTL_TC015
+    // Manual Test Case ID: TC118
     public void verifyInDraftUpdate() {
         throw new SkipException("Requires creating/updating draft document before dashboard refresh");
     }
 
     @Test(priority = 16, description = "Verify zero state")
-    // Test Case No: DASH_DTL_TC016
+    // Manual Test Case ID: TC119
     public void verifyZeroState() {
         Assert.assertTrue(getBodyText().contains("0") || getBodyText().contains("No Pending Items"),
                 "Zero state should be displayed where applicable");
     }
 
     @Test(priority = 17, description = "Verify Review Pending count")
-    // Test Case No: DASH_DTL_TC017
+    // Manual Test Case ID: TC120
     public void verifyReviewPendingCount() {
         WebElement card = getCardOrSkip(documentsCard, "Documents card is not available");
         Assert.assertTrue(card.getText().contains("Review Pending") || card.getText().matches("(?s).*\\b\\d+\\b.*"),
@@ -214,20 +214,20 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 18, description = "Verify Review update")
-    // Test Case No: DASH_DTL_TC018
+    // Manual Test Case ID: TC121
     public void verifyReviewUpdate() {
         throw new SkipException("Requires changing review-pending document count before refresh");
     }
 
     @Test(priority = 19, description = "Verify empty state")
-    // Test Case No: DASH_DTL_TC019
+    // Manual Test Case ID: TC122
     public void verifyEmptyState() {
         Assert.assertTrue(getBodyText().contains("0") || getBodyText().contains("No Pending Items") || getBodyText().length() > 0,
                 "Empty state should be handled");
     }
 
     @Test(priority = 20, description = "Verify Approval Pending count")
-    // Test Case No: DASH_DTL_TC020
+    // Manual Test Case ID: TC123
     public void verifyApprovalPendingCount() {
         WebElement card = getCardOrSkip(documentsCard, "Documents card is not available");
         Assert.assertTrue(card.getText().contains("Approval Pending") || card.getText().matches("(?s).*\\b\\d+\\b.*"),
@@ -235,20 +235,20 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 21, description = "Verify Approval update")
-    // Test Case No: DASH_DTL_TC021
+    // Manual Test Case ID: TC124
     public void verifyApprovalUpdate() {
         throw new SkipException("Requires changing approval-pending document count before refresh");
     }
 
     @Test(priority = 22, description = "Verify zero handling")
-    // Test Case No: DASH_DTL_TC022
+    // Manual Test Case ID: TC125
     public void verifyZeroHandling() {
         Assert.assertTrue(getBodyText().contains("0") || getBodyText().contains("No Pending Items") || getBodyText().length() > 0,
                 "Zero handling should be visible/stable");
     }
 
     @Test(priority = 23, description = "Verify View navigation (Documents)")
-    // Test Case No: DASH_DTL_TC023
+    // Manual Test Case ID: TC126
     public void verifyViewNavigationDocuments() {
         WebElement card = getCardOrSkip(documentsCard, "Documents card is not available");
         WebElement view = card.findElement(By.xpath(".//*[contains(normalize-space(.),'View')]"));
@@ -260,31 +260,31 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 24, description = "Verify correct module opens")
-    // Test Case No: DASH_DTL_TC024
+    // Manual Test Case ID: TC127
     public void verifyCorrectModuleOpens() {
         verifyViewNavigationDocuments();
     }
 
     @Test(priority = 25, description = "Verify invalid navigation handling")
-    // Test Case No: DASH_DTL_TC025
+    // Manual Test Case ID: TC128
     public void verifyInvalidNavigationHandling() {
         throw new SkipException("Requires controlled broken/invalid dashboard navigation URL");
     }
 
     @Test(priority = 26, description = "Verify count updates dynamically")
-    // Test Case No: DASH_DTL_TC026
+    // Manual Test Case ID: TC129
     public void verifyCountUpdatesDynamically() {
         throw new SkipException("Requires changing backend/dashboard data during test");
     }
 
     @Test(priority = 27, description = "Verify auto-refresh behavior")
-    // Test Case No: DASH_DTL_TC027
+    // Manual Test Case ID: TC130
     public void verifyAutoRefreshBehavior() {
         throw new SkipException("Requires confirmed dashboard auto-refresh interval");
     }
 
     @Test(priority = 28, description = "Verify manual refresh update")
-    // Test Case No: DASH_DTL_TC028
+    // Manual Test Case ID: TC131
     public void verifyManualRefreshUpdate() {
         driver.navigate().refresh();
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(qmsStatusTitle)).isDisplayed(),
@@ -292,7 +292,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 29, description = "Verify Investigation count")
-    // Test Case No: DASH_DTL_TC029
+    // Manual Test Case ID: TC132
     public void verifyInvestigationCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("Investigation") || card.getText().matches("(?s).*\\b\\d+\\b.*"),
@@ -300,13 +300,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 30, description = "Verify Investigation update")
-    // Test Case No: DASH_DTL_TC030
+    // Manual Test Case ID: TC133
     public void verifyInvestigationUpdate() {
         throw new SkipException("Requires changing Investigation count before dashboard refresh");
     }
 
     @Test(priority = 31, description = "Verify zero Investigation count")
-    // Test Case No: DASH_DTL_TC031
+    // Manual Test Case ID: TC134
     public void verifyZeroInvestigationCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Investigation"),
@@ -314,7 +314,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 32, description = "Verify Verification count")
-    // Test Case No: DASH_DTL_TC032
+    // Manual Test Case ID: TC135
     public void verifyVerificationCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("Verification") || isElementDisplayed(verificationLabel),
@@ -322,13 +322,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 33, description = "Verify Verification update")
-    // Test Case No: DASH_DTL_TC033
+    // Manual Test Case ID: TC136
     public void verifyVerificationUpdate() {
         throw new SkipException("Requires changing Verification count before dashboard refresh");
     }
 
     @Test(priority = 34, description = "Verify zero Verification count")
-    // Test Case No: DASH_DTL_TC034
+    // Manual Test Case ID: TC137
     public void verifyZeroVerificationCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Verification"),
@@ -336,7 +336,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 35, description = "Verify Effectiveness count")
-    // Test Case No: DASH_DTL_TC035
+    // Manual Test Case ID: TC138
     public void verifyEffectivenessCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("Effectiveness") || isElementDisplayed(effectivenessLabel),
@@ -344,13 +344,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 36, description = "Verify Effectiveness update")
-    // Test Case No: DASH_DTL_TC036
+    // Manual Test Case ID: TC139
     public void verifyEffectivenessUpdate() {
         throw new SkipException("Requires changing Effectiveness count before dashboard refresh");
     }
 
     @Test(priority = 37, description = "Verify zero Effectiveness count")
-    // Test Case No: DASH_DTL_TC037
+    // Manual Test Case ID: TC140
     public void verifyZeroEffectivenessCount() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Effectiveness"),
@@ -358,7 +358,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 38, description = "Verify CAPA View navigation")
-    // Test Case No: DASH_DTL_TC038
+    // Manual Test Case ID: TC141
     public void verifyCapaViewNavigation() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         clickCardViewOrSkip(card, "CAPA & Deviation View button is not available");
@@ -368,38 +368,38 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 39, description = "Verify correct CAPA module opens")
-    // Test Case No: DASH_DTL_TC039
+    // Manual Test Case ID: TC142
     public void verifyCorrectCapaModuleOpens() {
         verifyCapaViewNavigation();
     }
 
     @Test(priority = 40, description = "Verify invalid navigation handling")
-    // Test Case No: DASH_DTL_TC040
+    // Manual Test Case ID: TC143
     public void verifyCapaInvalidNavigationHandling() {
         throw new SkipException("Requires controlled invalid CAPA dashboard link");
     }
 
     @Test(priority = 41, description = "Verify CAPA data accuracy")
-    // Test Case No: DASH_DTL_TC041
+    // Manual Test Case ID: TC144
     public void verifyCapaDataAccuracy() {
         throw new SkipException("Requires backend/API expected CAPA metrics for comparison");
     }
 
     @Test(priority = 42, description = "Verify mismatch handling")
-    // Test Case No: DASH_DTL_TC042
+    // Manual Test Case ID: TC145
     public void verifyCapaMismatchHandling() {
         throw new SkipException("Requires controlled mismatched CAPA dashboard data");
     }
 
     @Test(priority = 43, description = "Verify partial data accuracy")
-    // Test Case No: DASH_DTL_TC043
+    // Manual Test Case ID: TC146
     public void verifyPartialCapaDataAccuracy() {
         WebElement card = getCardOrSkip(capaDeviationCard, "CAPA & Deviation card is not available");
         Assert.assertTrue(card.getText().length() > 0, "Partial CAPA data should display without breaking dashboard");
     }
 
     @Test(priority = 44, description = "Verify Pending training count")
-    // Test Case No: DASH_DTL_TC044
+    // Manual Test Case ID: TC147
     public void verifyPendingTrainingCount() {
         WebElement card = getCardOrSkip(trainingCard, "Training card is not available");
         Assert.assertTrue(card.getText().contains("Pending") || isElementDisplayed(pendingLabel),
@@ -407,13 +407,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 45, description = "Verify training count update")
-    // Test Case No: DASH_DTL_TC045
+    // Manual Test Case ID: TC148
     public void verifyTrainingCountUpdate() {
         throw new SkipException("Requires changing Training count before dashboard refresh");
     }
 
     @Test(priority = 46, description = "Verify zero training count")
-    // Test Case No: DASH_DTL_TC046
+    // Manual Test Case ID: TC149
     public void verifyZeroTrainingCount() {
         WebElement card = getCardOrSkip(trainingCard, "Training card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Pending"),
@@ -421,7 +421,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 47, description = "Verify Training View navigation")
-    // Test Case No: DASH_DTL_TC047
+    // Manual Test Case ID: TC150
     public void verifyTrainingViewNavigation() {
         WebElement card = getCardOrSkip(trainingCard, "Training card is not available");
         clickCardViewOrSkip(card, "Training View button is not available");
@@ -431,38 +431,38 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 48, description = "Verify correct Training module opens")
-    // Test Case No: DASH_DTL_TC048
+    // Manual Test Case ID: TC151
     public void verifyCorrectTrainingModuleOpens() {
         verifyTrainingViewNavigation();
     }
 
     @Test(priority = 49, description = "Verify invalid navigation handling")
-    // Test Case No: DASH_DTL_TC049
+    // Manual Test Case ID: TC152
     public void verifyTrainingInvalidNavigationHandling() {
         throw new SkipException("Requires controlled invalid Training dashboard link");
     }
 
     @Test(priority = 50, description = "Verify training data accuracy")
-    // Test Case No: DASH_DTL_TC050
+    // Manual Test Case ID: TC153
     public void verifyTrainingDataAccuracy() {
         throw new SkipException("Requires backend/API expected Training metrics for comparison");
     }
 
     @Test(priority = 51, description = "Verify incorrect data handling")
-    // Test Case No: DASH_DTL_TC051
+    // Manual Test Case ID: TC154
     public void verifyTrainingIncorrectDataHandling() {
         throw new SkipException("Requires controlled incorrect Training dashboard data");
     }
 
     @Test(priority = 52, description = "Verify partial data display")
-    // Test Case No: DASH_DTL_TC052
+    // Manual Test Case ID: TC155
     public void verifyTrainingPartialDataDisplay() {
         WebElement card = getCardOrSkip(trainingCard, "Training card is not available");
         Assert.assertTrue(card.getText().length() > 0, "Partial Training data should display without breaking dashboard");
     }
 
     @Test(priority = 53, description = "Verify Total Products count")
-    // Test Case No: DASH_DTL_TC053
+    // Manual Test Case ID: TC156
     public void verifyTotalProductsCount() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("Total Products") || isElementDisplayed(totalProductsLabel),
@@ -470,13 +470,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 54, description = "Verify product count update")
-    // Test Case No: DASH_DTL_TC054
+    // Manual Test Case ID: TC157
     public void verifyProductCountUpdate() {
         throw new SkipException("Requires changing Product count before dashboard refresh");
     }
 
     @Test(priority = 55, description = "Verify zero product count")
-    // Test Case No: DASH_DTL_TC055
+    // Manual Test Case ID: TC158
     public void verifyZeroProductCount() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Total Products"),
@@ -484,7 +484,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 56, description = "Verify Plan Under Review count")
-    // Test Case No: DASH_DTL_TC056
+    // Manual Test Case ID: TC159
     public void verifyPlanUnderReviewCount() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("Plan Under Review") || isElementDisplayed(planUnderReviewLabel),
@@ -492,13 +492,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 57, description = "Verify review count update")
-    // Test Case No: DASH_DTL_TC057
+    // Manual Test Case ID: TC160
     public void verifyReviewCountUpdateForProducts() {
         throw new SkipException("Requires changing Plan Under Review count before dashboard refresh");
     }
 
     @Test(priority = 58, description = "Verify zero review count")
-    // Test Case No: DASH_DTL_TC058
+    // Manual Test Case ID: TC161
     public void verifyZeroReviewCountForProducts() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Plan Under Review"),
@@ -506,7 +506,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 59, description = "Verify File & Report Under Review count")
-    // Test Case No: DASH_DTL_TC059
+    // Manual Test Case ID: TC162
     public void verifyFileReportUnderReviewCount() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("File") || isElementDisplayed(fileReportUnderReviewLabel),
@@ -514,13 +514,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 60, description = "Verify file/report update")
-    // Test Case No: DASH_DTL_TC060
+    // Manual Test Case ID: TC163
     public void verifyFileReportUpdate() {
         throw new SkipException("Requires changing File & Report Under Review count before dashboard refresh");
     }
 
     @Test(priority = 61, description = "Verify zero file/report count")
-    // Test Case No: DASH_DTL_TC061
+    // Manual Test Case ID: TC164
     public void verifyZeroFileReportCount() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("File"),
@@ -528,7 +528,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 62, description = "Verify Products View navigation")
-    // Test Case No: DASH_DTL_TC062
+    // Manual Test Case ID: TC165
     public void verifyProductsViewNavigation() {
         WebElement card = getCardOrSkip(productsCard, "Products card is not available");
         clickCardViewOrSkip(card, "Products View button is not available");
@@ -538,19 +538,19 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 63, description = "Verify correct Products module opens")
-    // Test Case No: DASH_DTL_TC063
+    // Manual Test Case ID: TC166
     public void verifyCorrectProductsModuleOpens() {
         verifyProductsViewNavigation();
     }
 
     @Test(priority = 64, description = "Verify invalid navigation handling")
-    // Test Case No: DASH_DTL_TC064
+    // Manual Test Case ID: TC167
     public void verifyProductsInvalidNavigationHandling() {
         throw new SkipException("Requires controlled invalid Products dashboard link");
     }
 
     @Test(priority = 65, description = "Verify Complaints Reported count")
-    // Test Case No: DASH_DTL_TC065
+    // Manual Test Case ID: TC168
     public void verifyComplaintsReportedCount() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         Assert.assertTrue(card.getText().contains("Complaints Reported") || isElementDisplayed(complaintsReportedLabel),
@@ -558,13 +558,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 66, description = "Verify complaint count update")
-    // Test Case No: DASH_DTL_TC066
+    // Manual Test Case ID: TC169
     public void verifyComplaintCountUpdate() {
         throw new SkipException("Requires changing complaint count before dashboard refresh");
     }
 
     @Test(priority = 67, description = "Verify zero complaints count")
-    // Test Case No: DASH_DTL_TC067
+    // Manual Test Case ID: TC170
     public void verifyZeroComplaintsCount() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Complaints Reported"),
@@ -572,7 +572,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 68, description = "Verify Open Complaints count")
-    // Test Case No: DASH_DTL_TC068
+    // Manual Test Case ID: TC171
     public void verifyOpenComplaintsCount() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         Assert.assertTrue(card.getText().contains("Open Complaints") || isElementDisplayed(openComplaintsLabel),
@@ -580,13 +580,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 69, description = "Verify open complaints update")
-    // Test Case No: DASH_DTL_TC069
+    // Manual Test Case ID: TC172
     public void verifyOpenComplaintsUpdate() {
         throw new SkipException("Requires changing open complaints count before dashboard refresh");
     }
 
     @Test(priority = 70, description = "Verify zero open complaints")
-    // Test Case No: DASH_DTL_TC070
+    // Manual Test Case ID: TC173
     public void verifyZeroOpenComplaints() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         Assert.assertTrue(card.getText().contains("0") || card.getText().contains("Open Complaints"),
@@ -594,7 +594,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 71, description = "Verify severity indicators displayed")
-    // Test Case No: DASH_DTL_TC071
+    // Manual Test Case ID: TC174
     public void verifySeverityIndicatorsDisplayed() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         Assert.assertTrue(card.getText().contains("Critical") || card.getText().contains("High") || card.getText().contains("Medium") || card.getText().contains("Low") || card.getText().length() > 0,
@@ -602,13 +602,13 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 72, description = "Verify severity classification")
-    // Test Case No: DASH_DTL_TC072
+    // Manual Test Case ID: TC175
     public void verifySeverityClassification() {
         throw new SkipException("Requires complaint severity source data for expected classification");
     }
 
     @Test(priority = 73, description = "Verify color coding of severity")
-    // Test Case No: DASH_DTL_TC073
+    // Manual Test Case ID: TC176
     public void verifyColorCodingOfSeverity() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         String backgroundColor = card.getCssValue("background-color");
@@ -616,7 +616,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 74, description = "Verify color consistency")
-    // Test Case No: DASH_DTL_TC074
+    // Manual Test Case ID: TC177
     public void verifyColorConsistency() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         String beforeRefresh = card.getCssValue("background-color");
@@ -628,7 +628,7 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 75, description = "Verify Complaint View navigation")
-    // Test Case No: DASH_DTL_TC075
+    // Manual Test Case ID: TC178
     public void verifyComplaintViewNavigation() {
         WebElement card = getCardOrSkip(complaintCard, "Complaint Management card is not available");
         clickCardViewOrSkip(card, "Complaint View button is not available");
@@ -638,39 +638,39 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 76, description = "Verify correct complaint module opens")
-    // Test Case No: DASH_DTL_TC076
+    // Manual Test Case ID: TC179
     public void verifyCorrectComplaintModuleOpens() {
         verifyComplaintViewNavigation();
     }
 
     @Test(priority = 77, description = "Verify invalid navigation handling")
-    // Test Case No: DASH_DTL_TC077
+    // Manual Test Case ID: TC180
     public void verifyComplaintInvalidNavigationHandling() {
         throw new SkipException("Requires controlled invalid Complaint dashboard link");
     }
 
     @Test(priority = 78, description = "Verify all View buttons redirect")
-    // Test Case No: DASH_DTL_TC078
+    // Manual Test Case ID: TC181
     public void verifyAllViewButtonsRedirect() {
         List<WebElement> viewButtons = driver.findElements(By.xpath("//*[contains(normalize-space(.),'View')][self::button or self::a or ancestor::button or ancestor::a]"));
         Assert.assertTrue(!viewButtons.isEmpty(), "Dashboard View buttons should be available");
     }
 
     @Test(priority = 79, description = "Verify incorrect redirection handling")
-    // Test Case No: DASH_DTL_TC079
+    // Manual Test Case ID: TC182
     public void verifyIncorrectRedirectionHandling() {
         throw new SkipException("Requires controlled incorrect dashboard redirection");
     }
 
     @Test(priority = 80, description = "Verify session maintained")
-    // Test Case No: DASH_DTL_TC080
+    // Manual Test Case ID: TC183
     public void verifySessionMaintained() {
         verifyProductsViewNavigation();
         Assert.assertFalse(driver.getCurrentUrl().contains("/login"), "Session should remain active while navigating modules");
     }
 
     @Test(priority = 81, description = "Verify session after refresh")
-    // Test Case No: DASH_DTL_TC081
+    // Manual Test Case ID: TC184
     public void verifySessionAfterRefresh() {
         driver.navigate().refresh();
         wait.until(ExpectedConditions.visibilityOfElementLocated(qmsStatusTitle));
@@ -678,14 +678,14 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 82, description = "Verify breadcrumb navigation")
-    // Test Case No: DASH_DTL_TC082
+    // Manual Test Case ID: TC185
     public void verifyBreadcrumbNavigation() {
         Assert.assertTrue(isElementDisplayed(breadcrumb) || getBodyText().contains("Easyq Solutions"),
                 "Breadcrumb/navigation context should be visible");
     }
 
     @Test(priority = 83, description = "Verify breadcrumb consistency")
-    // Test Case No: DASH_DTL_TC083
+    // Manual Test Case ID: TC186
     public void verifyBreadcrumbConsistency() {
         String beforeRefresh = isElementDisplayed(breadcrumb) ? driver.findElement(breadcrumb).getText() : getBodyText();
         driver.navigate().refresh();
@@ -697,132 +697,132 @@ public class EasyQDashboardDetailsTest {
     }
 
     @Test(priority = 84, description = "Verify counts match backend")
-    // Test Case No: DASH_DTL_TC084
+    // Manual Test Case ID: TC187
     public void verifyCountsMatchBackend() {
         throw new SkipException("Requires backend/API expected dashboard count values");
     }
 
     @Test(priority = 85, description = "Verify mismatch handling")
-    // Test Case No: DASH_DTL_TC085
+    // Manual Test Case ID: TC188
     public void verifyDashboardMismatchHandling() {
         throw new SkipException("Requires controlled mismatched dashboard/backend data");
     }
 
     @Test(priority = 86, description = "Verify partial match scenario")
-    // Test Case No: DASH_DTL_TC086
+    // Manual Test Case ID: TC189
     public void verifyPartialMatchScenario() {
         Assert.assertTrue(getBodyText().length() > 0, "Dashboard should handle partial data without breaking");
     }
 
     @Test(priority = 87, description = "Verify real-time updates")
-    // Test Case No: DASH_DTL_TC087
+    // Manual Test Case ID: TC190
     public void verifyRealTimeUpdates() {
         throw new SkipException("Requires changing dashboard source data during test");
     }
 
     @Test(priority = 88, description = "Verify auto update")
-    // Test Case No: DASH_DTL_TC088
+    // Manual Test Case ID: TC191
     public void verifyAutoUpdate() {
         throw new SkipException("Requires confirmed dashboard auto-update interval");
     }
 
     @Test(priority = 89, description = "Verify delayed update handling")
-    // Test Case No: DASH_DTL_TC089
+    // Manual Test Case ID: TC192
     public void verifyDelayedUpdateHandling() {
         throw new SkipException("Requires controlled delayed data update");
     }
 
     @Test(priority = 90, description = "Verify zero/null data handling")
-    // Test Case No: DASH_DTL_TC090
+    // Manual Test Case ID: TC193
     public void verifyZeroNullDataHandling() {
         Assert.assertTrue(getBodyText().contains("0") || getBodyText().contains("No Pending Items") || getBodyText().length() > 0,
                 "Dashboard should handle zero/null data safely");
     }
 
     @Test(priority = 91, description = "Verify null field handling")
-    // Test Case No: DASH_DTL_TC091
+    // Manual Test Case ID: TC194
     public void verifyNullFieldHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Dashboard should not crash for null fields");
     }
 
     @Test(priority = 92, description = "Verify partial null data")
-    // Test Case No: DASH_DTL_TC092
+    // Manual Test Case ID: TC195
     public void verifyPartialNullData() {
         Assert.assertTrue(getBodyText().length() > 0, "Dashboard should display partial null data safely");
     }
 
     @Test(priority = 93, description = "Verify dashboard per role")
-    // Test Case No: DASH_DTL_TC093
+    // Manual Test Case ID: TC196
     public void verifyDashboardPerRole() {
         throw new SkipException("Requires multiple role credentials");
     }
 
     @Test(priority = 94, description = "Verify admin view")
-    // Test Case No: DASH_DTL_TC094
+    // Manual Test Case ID: TC197
     public void verifyAdminView() {
         Assert.assertTrue(getBodyText().contains("Dashboard") || getBodyText().contains("QMS Status"),
                 "Admin/current user dashboard should display allowed modules");
     }
 
     @Test(priority = 95, description = "Verify restricted modules hidden")
-    // Test Case No: DASH_DTL_TC095
+    // Manual Test Case ID: TC198
     public void verifyRestrictedModulesHidden() {
         throw new SkipException("Requires limited-user credentials");
     }
 
     @Test(priority = 96, description = "Verify unauthorized access attempt")
-    // Test Case No: DASH_DTL_TC096
+    // Manual Test Case ID: TC199
     public void verifyUnauthorizedAccessAttempt() {
         throw new SkipException("Requires limited-user credentials and restricted module URL");
     }
 
     @Test(priority = 97, description = "Verify permission-based data")
-    // Test Case No: DASH_DTL_TC097
+    // Manual Test Case ID: TC200
     public void verifyPermissionBasedData() {
         throw new SkipException("Requires user with specific permission set");
     }
 
     @Test(priority = 98, description = "Verify restricted data hidden")
-    // Test Case No: DASH_DTL_TC098
+    // Manual Test Case ID: TC201
     public void verifyRestrictedDataHidden() {
         throw new SkipException("Requires limited-user credentials");
     }
 
     @Test(priority = 99, description = "Verify dashboard with no data")
-    // Test Case No: DASH_DTL_TC099
+    // Manual Test Case ID: TC202
     public void verifyDashboardWithNoData() {
         throw new SkipException("Requires no-data test user or environment");
     }
 
     @Test(priority = 100, description = "Verify no crash on empty data")
-    // Test Case No: DASH_DTL_TC100
+    // Manual Test Case ID: TC203
     public void verifyNoCrashOnEmptyData() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Dashboard should remain stable even if some widgets are empty");
     }
 
     @Test(priority = 101, description = "Verify large data handling")
-    // Test Case No: DASH_DTL_TC101
+    // Manual Test Case ID: TC104-TC203
     public void verifyLargeDataHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Dashboard should remain stable with available dataset");
     }
 
     @Test(priority = 102, description = "Verify large count display")
-    // Test Case No: DASH_DTL_TC102
+    // Manual Test Case ID: TC104-TC203
     public void verifyLargeCountDisplay() {
         Assert.assertTrue(getBodyText().matches("(?s).*\\d+.*") || getBodyText().length() > 0,
                 "Large counts should display without breaking layout");
     }
 
     @Test(priority = 103, description = "Verify partial data load")
-    // Test Case No: DASH_DTL_TC103
+    // Manual Test Case ID: TC104-TC203
     public void verifyPartialDataLoad() {
         Assert.assertTrue(getBodyText().length() > 0, "Dashboard should display partial loaded data safely");
     }
 
     @Test(priority = 104, description = "Verify missing data handling")
-    // Test Case No: DASH_DTL_TC104
+    // Manual Test Case ID: TC104-TC203
     public void verifyMissingDataHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Dashboard should not crash for missing data");
     }

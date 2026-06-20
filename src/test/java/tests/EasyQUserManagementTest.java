@@ -77,34 +77,34 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 1, description = "Verify User Management page loads successfully")
-    // Test Case No: USER_TC001
+    // Manual Test Case ID: TC279
     public void verifyUserManagementPageLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(userManagementTitle)).isDisplayed(),
                 "User Management page should load successfully");
     }
 
     @Test(priority = 2, description = "Verify page loads with correct data")
-    // Test Case No: USER_TC002
+    // Manual Test Case ID: TC280
     public void verifyPageLoadsWithCorrectData() {
         Assert.assertTrue(hasUserManagementDataOrPageLoaded(),
                 "User Management sections should load correctly");
     }
 
     @Test(priority = 3, description = "Verify User Management title is displayed")
-    // Test Case No: USER_TC003
+    // Manual Test Case ID: TC281
     public void verifyUserManagementTitleIsDisplayed() {
         Assert.assertTrue(driver.findElement(userManagementTitle).isDisplayed(), "User Management title should be visible");
     }
 
     @Test(priority = 4, description = "Verify Add User button is visible")
-    // Test Case No: USER_TC004
+    // Manual Test Case ID: TC282
     public void verifyAddUserButtonIsVisible() {
         Assert.assertTrue(isElementDisplayed(addUserButton) || driver.findElement(userManagementTitle).isDisplayed(),
                 "Add User button should be visible for authorized users");
     }
 
     @Test(priority = 5, description = "Verify Add User button is clickable")
-    // Test Case No: USER_TC005
+    // Manual Test Case ID: TC283
     public void verifyAddUserButtonIsClickable() {
         if (!isElementDisplayed(addUserButton)) {
             throw new SkipException("Add User button is unavailable or locator needs confirmation");
@@ -118,65 +118,65 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 6, description = "Verify Licenses Available count is displayed")
-    // Test Case No: USER_TC006
+    // Manual Test Case ID: TC284
     public void verifyLicensesAvailableCountIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(licensesAvailableText) || getBodyText().contains("Available"),
                 "Licenses Available count should be displayed");
     }
 
     @Test(priority = 7, description = "Verify license available count accuracy")
-    // Test Case No: USER_TC007
+    // Manual Test Case ID: TC285
     public void verifyLicenseAvailableCountAccuracy() {
         throw new SkipException("Requires backend/API license count for comparison");
     }
 
     @Test(priority = 8, description = "Verify Licenses Purchased count is displayed")
-    // Test Case No: USER_TC008
+    // Manual Test Case ID: TC286
     public void verifyLicensesPurchasedCountIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(licensesPurchasedText) || getBodyText().contains("Purchased"),
                 "Licenses Purchased count should be displayed");
     }
 
     @Test(priority = 9, description = "Verify purchased license count accuracy")
-    // Test Case No: USER_TC009
+    // Manual Test Case ID: TC287
     public void verifyPurchasedLicenseCountAccuracy() {
         throw new SkipException("Requires backend/API purchased license count for comparison");
     }
 
     @Test(priority = 10, description = "Verify license counts consistency")
-    // Test Case No: USER_TC010
+    // Manual Test Case ID: TC288
     public void verifyLicenseCountsConsistency() {
         Assert.assertTrue(getBodyText().contains("License") || hasUserManagementDataOrPageLoaded(),
                 "License counts should display consistently");
     }
 
     @Test(priority = 11, description = "Verify count updates after user creation")
-    // Test Case No: USER_TC011
+    // Manual Test Case ID: TC289
     public void verifyCountUpdatesAfterUserCreation() {
         throw new SkipException("Requires disposable user creation workflow and baseline license count");
     }
 
     @Test(priority = 12, description = "Verify All Users tab selected by default")
-    // Test Case No: USER_TC012
+    // Manual Test Case ID: TC290
     public void verifyAllUsersTabSelectedByDefault() {
         Assert.assertTrue(isElementDisplayed(allUsersTab) || getBodyText().contains("All Users"),
                 "All Users tab should be visible/selected by default");
     }
 
     @Test(priority = 13, description = "Verify Groups tab is visible")
-    // Test Case No: USER_TC013
+    // Manual Test Case ID: TC291
     public void verifyGroupsTabIsVisible() {
         Assert.assertTrue(isElementDisplayed(groupsTab), "Groups tab should be visible");
     }
 
     @Test(priority = 14, description = "Verify Documents tab is visible")
-    // Test Case No: USER_TC014
+    // Manual Test Case ID: TC292
     public void verifyDocumentsTabIsVisible() {
         Assert.assertTrue(isElementDisplayed(documentsTab), "Documents tab should be visible");
     }
 
     @Test(priority = 15, description = "Verify tab switching functionality")
-    // Test Case No: USER_TC015
+    // Manual Test Case ID: TC293
     public void verifyTabSwitchingFunctionality() {
         if (isElementDisplayed(groupsTab)) {
             driver.findElement(groupsTab).click();
@@ -194,7 +194,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 16, description = "Verify table columns are displayed")
-    // Test Case No: USER_TC016
+    // Manual Test Case ID: TC294
     public void verifyTableColumnsAreDisplayed() {
         Assert.assertTrue(isElementDisplayed(table) || hasUserManagementDataOrPageLoaded(),
                 "User Management table/list should be visible");
@@ -203,20 +203,20 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 17, description = "Verify user list is displayed")
-    // Test Case No: USER_TC017
+    // Manual Test Case ID: TC295
     public void verifyUserListIsDisplayed() {
         Assert.assertTrue(hasUserManagementDataOrPageLoaded(), "User data should be visible when available");
     }
 
     @Test(priority = 18, description = "Verify empty user list handling")
-    // Test Case No: USER_TC018
+    // Manual Test Case ID: TC296
     public void verifyEmptyUserListHandling() {
         Assert.assertTrue(isElementDisplayed(noDataMessage) || hasUserManagementDataOrPageLoaded(),
                 "Empty user list should be handled with a valid empty state");
     }
 
     @Test(priority = 19, description = "Verify pagination functionality")
-    // Test Case No: USER_TC019
+    // Manual Test Case ID: TC297
     public void verifyPaginationFunctionality() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Pagination next button is not available for current user data");
@@ -231,7 +231,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 20, description = "Verify pagination boundaries")
-    // Test Case No: USER_TC020
+    // Manual Test Case ID: TC298
     public void verifyPaginationBoundaries() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Pagination next button is not available for boundary validation");
@@ -246,7 +246,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 21, description = "Verify table scroll behavior")
-    // Test Case No: USER_TC021
+    // Manual Test Case ID: TC299
     public void verifyTableScrollBehavior() {
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
         waitForSmallDelay();
@@ -255,14 +255,14 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 22, description = "Verify user status ACTIVE is displayed")
-    // Test Case No: USER_TC022
+    // Manual Test Case ID: TC300
     public void verifyUserStatusActiveIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(userStatusText) || hasUserManagementDataOrPageLoaded(),
                 "User status should be visible when user data exists");
     }
 
     @Test(priority = 23, description = "Verify status color green")
-    // Test Case No: USER_TC023
+    // Manual Test Case ID: TC301
     public void verifyStatusColorGreen() {
         if (!isElementDisplayed(userStatusText)) {
             throw new SkipException("User status text is not available for color validation");
@@ -273,21 +273,21 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 24, description = "Verify Edit icon is visible")
-    // Test Case No: USER_TC024
+    // Manual Test Case ID: TC302
     public void verifyEditIconIsVisible() {
         Assert.assertTrue(isElementDisplayed(editIcon) || hasUserManagementDataOrPageLoaded(),
                 "Edit icon should be visible when editable user rows exist");
     }
 
     @Test(priority = 25, description = "Verify Disable icon is visible")
-    // Test Case No: USER_TC025
+    // Manual Test Case ID: TC303
     public void verifyDisableIconIsVisible() {
         Assert.assertTrue(isElementDisplayed(disableIcon) || hasUserManagementDataOrPageLoaded(),
                 "Disable icon should be visible when user rows allow disable action");
     }
 
     @Test(priority = 26, description = "Verify clicking Edit opens form")
-    // Test Case No: USER_TC026
+    // Manual Test Case ID: TC304
     public void verifyClickingEditOpensForm() {
         if (!isElementDisplayed(editIcon)) {
             throw new SkipException("Edit icon is not available for current user data");
@@ -301,13 +301,13 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 27, description = "Verify clicking Disable updates status")
-    // Test Case No: USER_TC027
+    // Manual Test Case ID: TC305
     public void verifyClickingDisableUpdatesStatus() {
         throw new SkipException("Disabling a user changes data and requires disposable test user");
     }
 
     @Test(priority = 28, description = "Verify Add User page opens on clicking button")
-    // Test Case No: USER_TC028
+    // Manual Test Case ID: TC306
     public void verifyAddUserPageOpensOnClickingButton() {
         openAddUserPageOrSkip();
 
@@ -316,7 +316,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 29, description = "Verify back navigation from Add User page")
-    // Test Case No: USER_TC029
+    // Manual Test Case ID: TC307
     public void verifyBackNavigationFromAddUserPage() {
         openAddUserPageOrSkip();
 
@@ -331,21 +331,21 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 30, description = "Verify First Name field is displayed")
-    // Test Case No: USER_TC030
+    // Manual Test Case ID: TC308
     public void verifyFirstNameFieldIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(firstNameField), "First Name field should be visible");
     }
 
     @Test(priority = 31, description = "Verify Last Name field is displayed")
-    // Test Case No: USER_TC031
+    // Manual Test Case ID: TC309
     public void verifyLastNameFieldIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(lastNameField), "Last Name field should be visible");
     }
 
     @Test(priority = 32, description = "Verify mandatory validation for name fields")
-    // Test Case No: USER_TC032
+    // Manual Test Case ID: TC310
     public void verifyMandatoryValidationForNameFields() {
         openAddUserPageOrSkip();
         clickSubmitOrSkip();
@@ -355,7 +355,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 33, description = "Verify valid name input")
-    // Test Case No: USER_TC033
+    // Manual Test Case ID: TC311
     public void verifyValidNameInput() {
         openAddUserPageOrSkip();
         driver.findElement(firstNameField).sendKeys("Automation");
@@ -366,21 +366,21 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 34, description = "Verify Email ID field is displayed")
-    // Test Case No: USER_TC034
+    // Manual Test Case ID: TC312
     public void verifyEmailIdFieldIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(userEmailField), "Email ID field should be visible");
     }
 
     @Test(priority = 35, description = "Verify Password field is displayed")
-    // Test Case No: USER_TC035
+    // Manual Test Case ID: TC313
     public void verifyPasswordFieldIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(userPasswordField), "Password field should be visible");
     }
 
     @Test(priority = 36, description = "Verify password visibility eye icon")
-    // Test Case No: USER_TC036
+    // Manual Test Case ID: TC314
     public void verifyPasswordVisibilityEyeIcon() {
         openAddUserPageOrSkip();
         if (!isElementDisplayed(eyeIcon)) {
@@ -394,7 +394,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 37, description = "Verify email format validation")
-    // Test Case No: USER_TC037
+    // Manual Test Case ID: TC315
     public void verifyEmailFormatValidation() {
         openAddUserPageOrSkip();
         driver.findElement(userEmailField).sendKeys("invalid-email");
@@ -405,7 +405,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 38, description = "Verify valid email accepted")
-    // Test Case No: USER_TC038
+    // Manual Test Case ID: TC316
     public void verifyValidEmailAccepted() {
         openAddUserPageOrSkip();
         String email = "automation.user+" + System.currentTimeMillis() + "@easyqsolutions.com";
@@ -415,7 +415,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 39, description = "Verify Designation dropdown is displayed")
-    // Test Case No: USER_TC039
+    // Manual Test Case ID: TC317
     public void verifyDesignationDropdownIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(designationDropdown) || getBodyText().contains("Designation"),
@@ -423,13 +423,13 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 40, description = "Verify designation selection")
-    // Test Case No: USER_TC040
+    // Manual Test Case ID: TC318
     public void verifyDesignationSelection() {
         throw new SkipException("Requires confirmed designation dropdown implementation and option values");
     }
 
     @Test(priority = 41, description = "Verify Select Group dropdown is displayed")
-    // Test Case No: USER_TC041
+    // Manual Test Case ID: TC319
     public void verifySelectGroupDropdownIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(groupDropdown) || getBodyText().contains("Group"),
@@ -437,13 +437,13 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 42, description = "Verify group selection")
-    // Test Case No: USER_TC042
+    // Manual Test Case ID: TC320
     public void verifyGroupSelection() {
         throw new SkipException("Requires confirmed group dropdown implementation and option values");
     }
 
     @Test(priority = 43, description = "Verify role options Doc Controller Assignee")
-    // Test Case No: USER_TC043
+    // Manual Test Case ID: TC321
     public void verifyRoleOptionsDocControllerAssignee() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(roleOption) || getBodyText().contains("Doc Controller") || getBodyText().contains("Assignee"),
@@ -451,13 +451,13 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 44, description = "Verify role selection")
-    // Test Case No: USER_TC044
+    // Manual Test Case ID: TC322
     public void verifyRoleSelection() {
         throw new SkipException("Requires confirmed role selection controls");
     }
 
     @Test(priority = 45, description = "Verify module list is displayed")
-    // Test Case No: USER_TC045
+    // Manual Test Case ID: TC323
     public void verifyModuleListIsDisplayed() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(moduleAccessText) || getBodyText().contains("Module"),
@@ -465,7 +465,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 46, description = "Verify module toggle buttons")
-    // Test Case No: USER_TC046
+    // Manual Test Case ID: TC324
     public void verifyModuleToggleButtons() {
         openAddUserPageOrSkip();
         Assert.assertTrue(isElementDisplayed(toggleButton) || getBodyText().contains("Access"),
@@ -473,7 +473,7 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 47, description = "Verify Full Access toggle functionality")
-    // Test Case No: USER_TC047
+    // Manual Test Case ID: TC325
     public void verifyFullAccessToggleFunctionality() {
         openAddUserPageOrSkip();
         if (!isElementDisplayed(fullAccessToggle)) {
@@ -484,19 +484,19 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 48, description = "Verify disabling Full Access")
-    // Test Case No: USER_TC048
+    // Manual Test Case ID: TC326
     public void verifyDisablingFullAccess() {
         verifyFullAccessToggleFunctionality();
     }
 
     @Test(priority = 49, description = "Verify user creation with valid data")
-    // Test Case No: USER_TC049
+    // Manual Test Case ID: TC327
     public void verifyUserCreationWithValidData() {
         throw new SkipException("Creates data and requires disposable email/test user policy");
     }
 
     @Test(priority = 50, description = "Verify error for invalid input")
-    // Test Case No: USER_TC050
+    // Manual Test Case ID: TC328
     public void verifyErrorForInvalidInput() {
         openAddUserPageOrSkip();
         driver.findElement(firstNameField).sendKeys("12345");
@@ -508,44 +508,44 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 51, description = "Verify success message after user creation")
-    // Test Case No: USER_TC051
+    // Manual Test Case ID: TC329
     public void verifySuccessMessageAfterUserCreation() {
         throw new SkipException("Requires creating disposable test user");
     }
 
     @Test(priority = 52, description = "Verify created user appears in list")
-    // Test Case No: USER_TC052
+    // Manual Test Case ID: TC330
     public void verifyCreatedUserAppearsInList() {
         throw new SkipException("Requires creating disposable test user");
     }
 
     @Test(priority = 53, description = "Verify updated user details persist")
-    // Test Case No: USER_TC053
+    // Manual Test Case ID: TC331
     public void verifyUpdatedUserDetailsPersist() {
         throw new SkipException("Requires editable disposable test user");
     }
 
     @Test(priority = 54, description = "Verify duplicate email handling")
-    // Test Case No: USER_TC054
+    // Manual Test Case ID: TC332
     public void verifyDuplicateEmailHandling() {
         throw new SkipException("Requires known duplicate email and controlled user creation flow");
     }
 
     @Test(priority = 55, description = "PDF Flow - Verify Super Admin company onboarding authority")
-    // Test Case No: USER_TC055
+    // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowSuperAdminCompanyOnboardingAuthority() {
         throw new SkipException("Requires Super Admin environment and company onboarding credentials");
     }
 
     @Test(priority = 56, description = "PDF Flow - Verify only Admin can access User Management")
-    // Test Case No: USER_TC056
+    // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowOnlyAdminCanAccessUserManagement() {
         Assert.assertTrue(driver.findElement(userManagementTitle).isDisplayed(),
                 "Admin/current user should access User Management as described in eQMS flow");
     }
 
     @Test(priority = 57, description = "PDF Flow - Verify Admin can create Document Controller and Assignee roles")
-    // Test Case No: USER_TC057
+    // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowAdminCanCreateDocumentControllerAndAssigneeRoles() {
         openAddUserPageOrSkip();
 
@@ -556,13 +556,13 @@ public class EasyQUserManagementTest {
     }
 
     @Test(priority = 58, description = "PDF Flow - Verify Document Controller and Assignee cannot access User Management")
-    // Test Case No: USER_TC058
+    // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowDocControllerAndAssigneeCannotAccessUserManagement() {
         throw new SkipException("Requires Document Controller and Assignee credentials");
     }
 
     @Test(priority = 59, description = "PDF Flow - Verify created users can log in after Admin setup")
-    // Test Case No: USER_TC059
+    // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowCreatedUsersCanLoginAfterAdminSetup() {
         throw new SkipException("Requires disposable created user credentials and login validation");
     }

@@ -60,240 +60,240 @@ public class EasyQManagementReviewTest {
     }
 
     @Test(priority = 1, description = "Verify Management Review module loads successfully")
-    // Test Case No: MR_TC001
+    // Manual Test Case ID: TC472
     public void verifyManagementReviewModuleLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(managementReviewTitle)).isDisplayed(),
                 "Management Review module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify module loads with data")
-    // Test Case No: MR_TC002
+    // Manual Test Case ID: TC473
     public void verifyModuleLoadsWithData() {
         Assert.assertTrue(hasManagementReviewDataOrPageLoaded(),
                 "Management Review should display data or a valid empty state");
     }
 
     @Test(priority = 3, description = "Verify no UI break on page load")
-    // Test Case No: MR_TC003
+    // Manual Test Case ID: TC474
     public void verifyNoUiBreakOnPageLoad() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Management Review page body should be visible");
         Assert.assertTrue(driver.findElement(managementReviewTitle).isDisplayed(), "Management Review title should be visible");
     }
 
     @Test(priority = 4, description = "Verify access for Admin")
-    // Test Case No: MR_TC004
+    // Manual Test Case ID: TC475
     public void verifyAccessForAdmin() {
         Assert.assertTrue(driver.findElement(managementReviewTitle).isDisplayed(),
                 "Admin/current user should access Management Review");
     }
 
     @Test(priority = 5, description = "Verify Admin/Doc Controller access")
-    // Test Case No: MR_TC005
+    // Manual Test Case ID: TC476
     public void verifyAdminDocControllerAccess() {
         Assert.assertTrue(isElementDisplayed(createButton) || driver.findElement(managementReviewTitle).isDisplayed(),
                 "Admin/Doc Controller should have module access and initiate action may be visible based on permissions");
     }
 
     @Test(priority = 6, description = "Verify Select MR option")
-    // Test Case No: MR_TC006
+    // Manual Test Case ID: TC477
     public void verifySelectMrOption() {
         Assert.assertTrue(isElementDisplayed(selectMrOption) || getBodyText().contains("MR"),
                 "Select MR option/text should be visible when authorized");
     }
 
     @Test(priority = 7, description = "Verify only one MR can be assigned")
-    // Test Case No: MR_TC007
+    // Manual Test Case ID: TC478
     public void verifyOnlyOneMrCanBeAssigned() {
         throw new SkipException("Requires MR assignment form locators and controlled assignment data");
     }
 
     @Test(priority = 8, description = "Verify MR assignment saves")
-    // Test Case No: MR_TC008
+    // Manual Test Case ID: TC479
     public void verifyMrAssignmentSaves() {
         throw new SkipException("Requires MR assignment workflow and test user");
     }
 
     @Test(priority = 9, description = "Verify MR edit functionality")
-    // Test Case No: MR_TC009
+    // Manual Test Case ID: TC480
     public void verifyMrEditFunctionality() {
         Assert.assertTrue(isElementDisplayed(editButton) || hasManagementReviewDataOrPageLoaded(),
                 "MR edit option should be visible when editable MR exists");
     }
 
     @Test(priority = 10, description = "Verify MR saved as Draft")
-    // Test Case No: MR_TC010
+    // Manual Test Case ID: TC481
     public void verifyMrSavedAsDraft() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "Draft status should be visible when draft MR exists");
     }
 
     @Test(priority = 11, description = "Verify MR sent for approval")
-    // Test Case No: MR_TC011
+    // Manual Test Case ID: TC482
     public void verifyMrSentForApproval() {
         throw new SkipException("Requires draft MR record and send-for-approval workflow");
     }
 
     @Test(priority = 12, description = "Verify MR workflow Draft to Review to Approved")
-    // Test Case No: MR_TC012
+    // Manual Test Case ID: TC483
     public void verifyMrWorkflowDraftReviewApproved() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "MR workflow status should be visible when records exist");
     }
 
     @Test(priority = 13, description = "Verify previous MR becomes obsolete")
-    // Test Case No: MR_TC013
+    // Manual Test Case ID: TC484
     public void verifyPreviousMrBecomesObsolete() {
         throw new SkipException("Requires approving a new MR and checking previous MR status");
     }
 
     @Test(priority = 14, description = "Verify reviewer access to MR")
-    // Test Case No: MR_TC014
+    // Manual Test Case ID: TC485
     public void verifyReviewerAccessToMr() {
         throw new SkipException("Requires reviewer credentials");
     }
 
     @Test(priority = 15, description = "Verify reviewer can edit MR")
-    // Test Case No: MR_TC015
+    // Manual Test Case ID: TC486
     public void verifyReviewerCanEditMr() {
         throw new SkipException("Requires reviewer credentials and review-stage MR");
     }
 
     @Test(priority = 16, description = "Verify approver can approve MR")
-    // Test Case No: MR_TC016
+    // Manual Test Case ID: TC487
     public void verifyApproverCanApproveMr() {
         throw new SkipException("Requires approver credentials and approval-stage MR");
     }
 
     @Test(priority = 17, description = "Verify status changes after approval")
-    // Test Case No: MR_TC017
+    // Manual Test Case ID: TC488
     public void verifyStatusChangesAfterApproval() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "Approval status should reflect in UI when approved MR exists");
     }
 
     @Test(priority = 18, description = "Verify schedule creation")
-    // Test Case No: MR_TC018
+    // Manual Test Case ID: TC489
     public void verifyScheduleCreation() {
         throw new SkipException("Requires schedule creation form locators and test data");
     }
 
     @Test(priority = 19, description = "Verify date/time selection")
-    // Test Case No: MR_TC019
+    // Manual Test Case ID: TC490
     public void verifyDateTimeSelection() {
         throw new SkipException("Requires schedule date/time picker locators");
     }
 
     @Test(priority = 20, description = "Verify stakeholder addition")
-    // Test Case No: MR_TC020
+    // Manual Test Case ID: TC491
     public void verifyStakeholderAddition() {
         throw new SkipException("Requires stakeholder selector locator and test users");
     }
 
     @Test(priority = 21, description = "Verify meeting invite sent")
-    // Test Case No: MR_TC021
+    // Manual Test Case ID: TC492
     public void verifyMeetingInviteSent() {
         throw new SkipException("Requires email/invite verification or notification test hook");
     }
 
     @Test(priority = 22, description = "Verify meeting visible to users")
-    // Test Case No: MR_TC022
+    // Manual Test Case ID: TC493
     public void verifyMeetingVisibleToUsers() {
         Assert.assertTrue(isElementDisplayed(scheduleText) || hasManagementReviewDataOrPageLoaded(),
                 "Meeting/schedule should be visible when data exists");
     }
 
     @Test(priority = 23, description = "Verify MOM creation")
-    // Test Case No: MR_TC023
+    // Manual Test Case ID: TC494
     public void verifyMomCreation() {
         throw new SkipException("Requires MOM creation workflow and field locators");
     }
 
     @Test(priority = 24, description = "Verify MOM saved as Draft")
-    // Test Case No: MR_TC024
+    // Manual Test Case ID: TC495
     public void verifyMomSavedAsDraft() {
         Assert.assertTrue(isElementDisplayed(momText) || isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "MOM draft/status should be visible when data exists");
     }
 
     @Test(priority = 25, description = "Verify MOM sent for review")
-    // Test Case No: MR_TC025
+    // Manual Test Case ID: TC496
     public void verifyMomSentForReview() {
         throw new SkipException("Requires MOM draft and send-for-review workflow");
     }
 
     @Test(priority = 26, description = "Verify reviewer can review MOM")
-    // Test Case No: MR_TC026
+    // Manual Test Case ID: TC497
     public void verifyReviewerCanReviewMom() {
         throw new SkipException("Requires reviewer credentials and MOM review-stage data");
     }
 
     @Test(priority = 27, description = "Verify approver can approve MOM")
-    // Test Case No: MR_TC027
+    // Manual Test Case ID: TC498
     public void verifyApproverCanApproveMom() {
         throw new SkipException("Requires approver credentials and MOM approval-stage data");
     }
 
     @Test(priority = 28, description = "Verify MOM status Approved")
-    // Test Case No: MR_TC028
+    // Manual Test Case ID: TC499
     public void verifyMomStatusApproved() {
         Assert.assertTrue(isElementDisplayed(momText) || isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "MOM approved status should be visible when approved MOM exists");
     }
 
     @Test(priority = 29, description = "Verify tasks visible in My Tasks")
-    // Test Case No: MR_TC029
+    // Manual Test Case ID: TC500
     public void verifyTasksVisibleInMyTasks() {
         Assert.assertTrue(isElementDisplayed(taskText) || hasManagementReviewDataOrPageLoaded(),
                 "MR tasks should be visible when assigned to current user");
     }
 
     @Test(priority = 30, description = "Verify MR can view task")
-    // Test Case No: MR_TC030
+    // Manual Test Case ID: TC501
     public void verifyMrCanViewTask() {
         Assert.assertTrue(isElementDisplayed(taskText) || hasManagementReviewDataOrPageLoaded(),
                 "MR task details should be viewable when assigned");
     }
 
     @Test(priority = 31, description = "Verify MR can complete task")
-    // Test Case No: MR_TC031
+    // Manual Test Case ID: TC502
     public void verifyMrCanCompleteTask() {
         throw new SkipException("Requires assigned MR task and completion workflow");
     }
 
     @Test(priority = 32, description = "Verify task status updates")
-    // Test Case No: MR_TC032
+    // Manual Test Case ID: TC503
     public void verifyTaskStatusUpdates() {
         throw new SkipException("Requires completing an assigned task and status verification");
     }
 
     @Test(priority = 33, description = "Verify Assignee cannot initiate MR")
-    // Test Case No: MR_TC033
+    // Manual Test Case ID: TC504
     public void verifyAssigneeCannotInitiateMr() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 34, description = "Verify view-only access")
-    // Test Case No: MR_TC034
+    // Manual Test Case ID: TC505
     public void verifyViewOnlyAccess() {
         Assert.assertTrue(driver.findElement(managementReviewTitle).isDisplayed(),
                 "Management Review should be visible in view-only mode when user has access");
     }
 
     @Test(priority = 35, description = "Verify MR data saved correctly")
-    // Test Case No: MR_TC035
+    // Manual Test Case ID: TC506
     public void verifyMrDataSavedCorrectly() {
         throw new SkipException("Requires MR save workflow with unique test data");
     }
 
     @Test(priority = 36, description = "Verify status reflects correctly")
-    // Test Case No: MR_TC036
+    // Manual Test Case ID: TC507
     public void verifyStatusReflectsCorrectly() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "MR status should reflect correctly in UI");
     }
 
     @Test(priority = 37, description = "Verify empty submission handling")
-    // Test Case No: MR_TC037
+    // Manual Test Case ID: TC508
     public void verifyEmptySubmissionHandling() {
         openCreateMrIfAvailable();
         clickFirstAvailable(submitButton, saveButton);
@@ -303,26 +303,26 @@ public class EasyQManagementReviewTest {
     }
 
     @Test(priority = 38, description = "Verify long text handling")
-    // Test Case No: MR_TC038
+    // Manual Test Case ID: TC509
     public void verifyLongTextHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Management Review page should handle long text records without breaking");
     }
 
     @Test(priority = 39, description = "Verify multiple stakeholders handling")
-    // Test Case No: MR_TC039
+    // Manual Test Case ID: TC510
     public void verifyMultipleStakeholdersHandling() {
         throw new SkipException("Requires stakeholder selector and multiple test users");
     }
 
     @Test(priority = 40, description = "Verify restricted access for Assignee")
-    // Test Case No: MR_TC040
+    // Manual Test Case ID: TC511
     public void verifyRestrictedAccessForAssignee() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 41, description = "PDF Flow - Verify Management Review has MR Schedule Outputs and My Tasks areas")
-    // Test Case No: MR_TC041
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowManagementReviewAreas() {
         String bodyText = getBodyText();
 
@@ -337,46 +337,46 @@ public class EasyQManagementReviewTest {
     }
 
     @Test(priority = 42, description = "PDF Flow - Verify only one MR assignment rule")
-    // Test Case No: MR_TC042
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowOnlyOneMrAssignmentRule() {
         throw new SkipException("Requires MR assignment workflow and registered user data");
     }
 
     @Test(priority = 43, description = "PDF Flow - Verify MR status path Draft Under Review Approved")
-    // Test Case No: MR_TC043
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowMrStatusPath() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasManagementReviewDataOrPageLoaded(),
                 "MR document should support Draft to Under Review to Approved status flow");
     }
 
     @Test(priority = 44, description = "PDF Flow - Verify approved MR download restricted to Admin Doc Controller")
-    // Test Case No: MR_TC044
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowApprovedMrDownloadRestriction() {
         throw new SkipException("Requires approved MR record and Admin/Document Controller role validation");
     }
 
     @Test(priority = 45, description = "PDF Flow - Verify new MR moves previous approved MR to Obsolete")
-    // Test Case No: MR_TC045
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowNewMrMovesPreviousApprovedMrToObsolete() {
         throw new SkipException("Requires creating/approving a new MR document and checking previous MR status");
     }
 
     @Test(priority = 46, description = "PDF Flow - Verify MRM schedule date time day stakeholders")
-    // Test Case No: MR_TC046
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowMrmScheduleFields() {
         Assert.assertTrue(isElementDisplayed(scheduleText) || hasManagementReviewDataOrPageLoaded(),
                 "MRM schedule should support Date, Time, Day, and Stakeholders when schedule data exists");
     }
 
     @Test(priority = 47, description = "PDF Flow - Verify MOM Add New Output and approval flow")
-    // Test Case No: MR_TC047
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowMomAddNewOutputApprovalFlow() {
         Assert.assertTrue(isElementDisplayed(momText) || hasManagementReviewDataOrPageLoaded(),
                 "MOM output area should support draft, review, and approval flow when data exists");
     }
 
     @Test(priority = 48, description = "PDF Flow - Verify MR assigned tasks appear in My Tasks")
-    // Test Case No: MR_TC048
+    // Manual Test Case ID: TC472-TC511
     public void verifyPdfFlowMrAssignedTasksAppearInMyTasks() {
         Assert.assertTrue(isElementDisplayed(taskText) || hasManagementReviewDataOrPageLoaded(),
                 "MR assigned tasks should appear in My Tasks when assigned");

@@ -133,7 +133,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 1, description = "Verify dynamic dashboard loads after valid login")
-    // Test Case No: DYN_TC001
+    // Manual Test Case ID: TC001-TC078, TC079-TC203
     public void verifyDynamicDashboardLoadsAfterLogin() {
         loginToDashboard();
 
@@ -145,7 +145,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 2, dataProvider = "modulePages", description = "Verify dynamic module page navigation and load state")
-    // Test Case No: DYN_TC002 to DYN_TC012
+    // Manual Test Case ID: TC079-TC679
     public void verifyDynamicModulePageLoads(String moduleName, String[] aliases) {
         loginToDashboard();
 
@@ -161,7 +161,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 3, dataProvider = "workflowModules", description = "Verify dynamic create/initiate/upload workflow branch")
-    // Test Case No: DYN_TC013 to DYN_TC021
+    // Manual Test Case ID: TC279-TC679
     public void verifyDynamicWorkflowActionBranch(String moduleName, String[] aliases) {
         loginToDashboard();
 
@@ -190,7 +190,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 4, dataProvider = "workflowModules", description = "Verify workflow status is handled dynamically")
-    // Test Case No: DYN_TC022 to DYN_TC030
+    // Manual Test Case ID: TC366-TC620, TC640-TC679
     public void verifyDynamicWorkflowStatusHandling(String moduleName, String[] aliases) {
         loginToDashboard();
 
@@ -208,7 +208,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 5, description = "Verify dashboard View links navigate dynamically")
-    // Test Case No: DYN_TC031
+    // Manual Test Case ID: TC091-TC119, TC121-TC164
     public void verifyDashboardViewLinksNavigateDynamically() {
         loginToDashboard();
 
@@ -228,7 +228,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 6, description = "Verify notifications panel and notification redirection dynamically")
-    // Test Case No: DYN_TC032
+    // Manual Test Case ID: TC204-TC278
     public void verifyNotificationsPanelAndRedirectionDynamically() {
         loginToDashboard();
 
@@ -249,7 +249,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 7, description = "Verify Active Logs dynamic audit trail state")
-    // Test Case No: DYN_TC033
+    // Manual Test Case ID: TC333-TC365
     public void verifyActiveLogsDynamicAuditTrailState() {
         loginToDashboard();
 
@@ -267,7 +267,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 8, description = "Verify Training workflow handles dynamic create, assign, and completion states")
-    // Test Case No: DYN_TC034
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingWorkflowHandlesDynamicStates() {
         loginToDashboard();
 
@@ -291,7 +291,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 9, description = "Verify Document Management workflow handles draft, review, approval, and version states")
-    // Test Case No: DYN_TC035
+    // Manual Test Case ID: TC512-TC547
     public void verifyDocumentWorkflowHandlesDynamicStates() {
         loginToDashboard();
 
@@ -314,7 +314,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 10, description = "Verify Product and Complaint dynamic list behavior")
-    // Test Case No: DYN_TC036
+    // Manual Test Case ID: TC621-TC679
     public void verifyProductAndComplaintDynamicListBehavior() {
         loginToDashboard();
         verifyListModuleDynamicState("Products", new String[]{"Products"});
@@ -324,7 +324,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 11, description = "Verify search and pagination dynamic controls")
-    // Test Case No: DYN_TC037
+    // Manual Test Case ID: TC624-TC629, TC297-TC298
     public void verifySearchAndPaginationDynamicControls() {
         loginToDashboard();
 
@@ -348,7 +348,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 12, dataProvider = "coreRoleAccounts", description = "Verify core roles can login and reach dashboard")
-    // Test Case No: DYN_TC038 to DYN_TC040
+    // Manual Test Case ID: TC036, TC061, TC192-TC197
     public void verifyCoreRolesCanLoginAndReachDashboard(RoleAccount account) {
         loginToDashboard(account);
 
@@ -360,7 +360,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 13, dataProvider = "roleModuleRules", description = "Verify role-based module access dynamically")
-    // Test Case No: DYN_TC041 to DYN_TC046
+    // Manual Test Case ID: TC193-TC197, TC279-TC332, TC512-TC547, TC590-TC620
     public void verifyRoleBasedModuleAccessDynamically(
             RoleAccount account,
             String moduleName,
@@ -391,7 +391,7 @@ public class EasyQDynamicWorkflowTest extends BaseTest {
     }
 
     @Test(priority = 14, dataProvider = "assigneeAccounts", description = "Verify all assignee accounts handle dashboard and task workflow")
-    // Test Case No: DYN_TC047 to DYN_TC054
+    // Manual Test Case ID: TC602-TC615
     public void verifyAllAssigneeAccountsHandleDashboardAndTasks(RoleAccount account) {
         loginToDashboard(account);
 

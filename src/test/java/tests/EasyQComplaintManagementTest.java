@@ -65,21 +65,21 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 1, description = "Verify Complaint module loads successfully")
-    // Test Case No: COMP_TC001
+    // Manual Test Case ID: TC640
     public void verifyComplaintModuleLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(complaintTitle)).isDisplayed(),
                 "Complaint Management module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify empty state when no complaints")
-    // Test Case No: COMP_TC002
+    // Manual Test Case ID: TC641
     public void verifyEmptyStateWhenNoComplaints() {
         Assert.assertTrue(isElementDisplayed(logComplaintButton) || isElementDisplayed(noComplaintsMessage) || hasComplaintDataOrPageLoaded(),
                 "When no complaints exist, page should show Log Complaint or a valid empty state");
     }
 
     @Test(priority = 3, description = "Verify complaint form opens")
-    // Test Case No: COMP_TC003
+    // Manual Test Case ID: TC642
     public void verifyComplaintFormOpens() {
         openComplaintFormIfAvailable();
 
@@ -88,7 +88,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 4, description = "Verify all fields are visible")
-    // Test Case No: COMP_TC004
+    // Manual Test Case ID: TC643
     public void verifyAllFieldsAreVisible() {
         openComplaintFormIfAvailable();
 
@@ -97,7 +97,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 5, description = "Verify buttons are visible")
-    // Test Case No: COMP_TC005
+    // Manual Test Case ID: TC644
     public void verifyButtonsAreVisible() {
         openComplaintFormIfAvailable();
 
@@ -106,7 +106,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 6, description = "Verify Initiated By field prefilled")
-    // Test Case No: COMP_TC006
+    // Manual Test Case ID: TC645
     public void verifyInitiatedByFieldPrefilled() {
         openComplaintFormIfAvailable();
 
@@ -116,7 +116,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 7, description = "Verify radio buttons default state")
-    // Test Case No: COMP_TC007
+    // Manual Test Case ID: TC646
     public void verifyRadioButtonsDefaultState() {
         openComplaintFormIfAvailable();
 
@@ -125,7 +125,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 8, description = "Verify Cancel functionality")
-    // Test Case No: COMP_TC008
+    // Manual Test Case ID: TC647
     public void verifyCancelFunctionality() {
         openComplaintFormIfAvailable();
 
@@ -139,20 +139,20 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 9, description = "Verify complaint card details")
-    // Test Case No: COMP_TC009
+    // Manual Test Case ID: TC648
     public void verifyComplaintCardDetails() {
         Assert.assertTrue(hasComplaintDataOrPageLoaded(), "Complaint details/cards/list should be displayed when data exists");
     }
 
     @Test(priority = 10, description = "Verify CAPA value when not linked")
-    // Test Case No: COMP_TC010
+    // Manual Test Case ID: TC649
     public void verifyCapaValueWhenNotLinked() {
         Assert.assertTrue(getBodyText().contains("NA") || getBodyText().contains("N/A") || hasComplaintDataOrPageLoaded(),
                 "Complaint card should show NA/N/A for CAPA when not linked");
     }
 
     @Test(priority = 11, description = "Verify analytics page display")
-    // Test Case No: COMP_TC011
+    // Manual Test Case ID: TC650
     public void verifyAnalyticsPageDisplay() {
         String bodyText = getBodyText();
         Assert.assertTrue(bodyText.contains("Analytics") || bodyText.contains("Chart") || bodyText.contains("Open") || bodyText.contains("Closed"),
@@ -160,41 +160,41 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 12, description = "Verify filter by priority")
-    // Test Case No: COMP_TC012
+    // Manual Test Case ID: TC651
     public void verifyFilterByPriority() {
         Assert.assertTrue(isElementDisplayed(priorityFilter) || hasComplaintDataOrPageLoaded(),
                 "Priority filter should be available when filtering is supported");
     }
 
     @Test(priority = 13, description = "Verify filter by status")
-    // Test Case No: COMP_TC013
+    // Manual Test Case ID: TC652
     public void verifyFilterByStatus() {
         Assert.assertTrue(isElementDisplayed(statusFilter) || hasComplaintDataOrPageLoaded(),
                 "Status filter should be available when filtering is supported");
     }
 
     @Test(priority = 14, description = "Verify list view display")
-    // Test Case No: COMP_TC014
+    // Manual Test Case ID: TC653
     public void verifyListViewDisplay() {
         Assert.assertTrue(hasComplaintDataOrPageLoaded(), "Complaint list view should display columns/cards when data exists");
     }
 
     @Test(priority = 15, description = "Verify actions for open complaint")
-    // Test Case No: COMP_TC015
+    // Manual Test Case ID: TC654
     public void verifyActionsForOpenComplaint() {
         Assert.assertTrue(isElementDisplayed(editButton) || isElementDisplayed(deleteButton) || hasComplaintDataOrPageLoaded(),
                 "Open complaint actions should be visible when open complaints exist");
     }
 
     @Test(priority = 16, description = "Verify actions for closed complaint")
-    // Test Case No: COMP_TC016
+    // Manual Test Case ID: TC655
     public void verifyActionsForClosedComplaint() {
         Assert.assertTrue(isElementDisplayed(downloadButton) || hasComplaintDataOrPageLoaded(),
                 "Closed complaint actions should be hidden or download-only based on data");
     }
 
     @Test(priority = 17, description = "Verify navigation via complaint ID")
-    // Test Case No: COMP_TC017
+    // Manual Test Case ID: TC656
     public void verifyNavigationViaComplaintId() {
         if (!isElementDisplayed(complaintIdLink)) {
             throw new SkipException("Complaint ID link is not available for current test data");
@@ -206,14 +206,14 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 18, description = "Verify download option for closed complaint")
-    // Test Case No: COMP_TC018
+    // Manual Test Case ID: TC657
     public void verifyDownloadOptionForClosedComplaint() {
         Assert.assertTrue(isElementDisplayed(downloadButton) || hasComplaintDataOrPageLoaded(),
                 "Download option should be available for closed complaint when data exists");
     }
 
     @Test(priority = 19, description = "Verify CAPA = Yes behavior")
-    // Test Case No: COMP_TC019
+    // Manual Test Case ID: TC658
     public void verifyCapaYesBehavior() {
         openComplaintFormIfAvailable();
         Assert.assertTrue(isElementDisplayed(capaText) || getBodyText().contains("CAPA"),
@@ -221,7 +221,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 20, description = "Verify CAPA = No behavior")
-    // Test Case No: COMP_TC020
+    // Manual Test Case ID: TC659
     public void verifyCapaNoBehavior() {
         openComplaintFormIfAvailable();
         Assert.assertTrue(getBodyText().contains("Justification") || getBodyText().contains("CAPA") || driver.findElement(By.tagName("body")).isDisplayed(),
@@ -229,7 +229,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 21, description = "Verify CAPA mandatory validation")
-    // Test Case No: COMP_TC021
+    // Manual Test Case ID: TC660
     public void verifyCapaMandatoryValidation() {
         openComplaintFormIfAvailable();
 
@@ -242,38 +242,38 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 22, description = "Verify source of issue")
-    // Test Case No: COMP_TC022
+    // Manual Test Case ID: TC661
     public void verifySourceOfIssue() {
         Assert.assertTrue(getBodyText().contains("Complaint") || hasComplaintDataOrPageLoaded(),
                 "Source of issue should be Complaint when linked to CAPA");
     }
 
     @Test(priority = 23, description = "Verify Add to Risk = Yes enables fields")
-    // Test Case No: COMP_TC023
+    // Manual Test Case ID: TC662
     public void verifyAddToRiskYesEnablesFields() {
         throw new SkipException("Requires confirmed Add to Risk radio locator and dependent field locators");
     }
 
     @Test(priority = 24, description = "Verify Add to Risk = No disables fields")
-    // Test Case No: COMP_TC024
+    // Manual Test Case ID: TC663
     public void verifyAddToRiskNoDisablesFields() {
         throw new SkipException("Requires confirmed Add to Risk radio locator and dependent field locators");
     }
 
     @Test(priority = 25, description = "Verify Save functionality")
-    // Test Case No: COMP_TC025
+    // Manual Test Case ID: TC664
     public void verifySaveFunctionality() {
         throw new SkipException("Requires disposable complaint test data and exact form field locators");
     }
 
     @Test(priority = 26, description = "Verify Submit functionality")
-    // Test Case No: COMP_TC026
+    // Manual Test Case ID: TC665
     public void verifySubmitFunctionality() {
         throw new SkipException("Requires disposable complaint test data and submit workflow confirmation");
     }
 
     @Test(priority = 27, description = "Verify valid file upload")
-    // Test Case No: COMP_TC027
+    // Manual Test Case ID: TC666
     public void verifyValidFileUpload() {
         if (!isElementDisplayed(uploadInput)) {
             throw new SkipException("File upload control locator needs confirmation");
@@ -282,7 +282,7 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 28, description = "Verify invalid file upload")
-    // Test Case No: COMP_TC028
+    // Manual Test Case ID: TC667
     public void verifyInvalidFileUpload() {
         if (!isElementDisplayed(uploadInput)) {
             throw new SkipException("File upload control locator needs confirmation");
@@ -291,73 +291,73 @@ public class EasyQComplaintManagementTest {
     }
 
     @Test(priority = 29, description = "Verify deletion of complaint")
-    // Test Case No: COMP_TC029
+    // Manual Test Case ID: TC668
     public void verifyDeletionOfComplaint() {
         throw new SkipException("Destructive test requires disposable open complaint record");
     }
 
     @Test(priority = 30, description = "Verify counter increase on new complaint")
-    // Test Case No: COMP_TC030
+    // Manual Test Case ID: TC669
     public void verifyCounterIncreaseOnNewComplaint() {
         throw new SkipException("Requires create complaint workflow and baseline counter capture");
     }
 
     @Test(priority = 31, description = "Verify counter update on close")
-    // Test Case No: COMP_TC031
+    // Manual Test Case ID: TC670
     public void verifyCounterUpdateOnClose() {
         throw new SkipException("Requires existing open complaint and close workflow");
     }
 
     @Test(priority = 32, description = "Verify edit open complaint")
-    // Test Case No: COMP_TC032
+    // Manual Test Case ID: TC671
     public void verifyEditOpenComplaint() {
         throw new SkipException("Requires open complaint test record and edit field locators");
     }
 
     @Test(priority = 33, description = "Verify save after edit")
-    // Test Case No: COMP_TC033
+    // Manual Test Case ID: TC672
     public void verifySaveAfterEdit() {
         throw new SkipException("Requires open complaint test record and editable test data");
     }
 
     @Test(priority = 34, description = "Verify CAPA creation")
-    // Test Case No: COMP_TC034
+    // Manual Test Case ID: TC673
     public void verifyCapaCreation() {
         throw new SkipException("Requires complaint submit workflow with CAPA enabled");
     }
 
     @Test(priority = 35, description = "Verify CAPA navigation")
-    // Test Case No: COMP_TC035
+    // Manual Test Case ID: TC674
     public void verifyCapaNavigation() {
         throw new SkipException("Requires complaint linked with generated CAPA ID");
     }
 
     @Test(priority = 36, description = "Verify CAPA form prefilled")
-    // Test Case No: COMP_TC036
+    // Manual Test Case ID: TC675
     public void verifyCapaFormPrefilled() {
         throw new SkipException("Requires complaint linked with CAPA form");
     }
 
     @Test(priority = 37, description = "Verify edit allowed for open complaint")
-    // Test Case No: COMP_TC037
+    // Manual Test Case ID: TC676
     public void verifyEditAllowedForOpenComplaint() {
         throw new SkipException("Requires open complaint test record");
     }
 
     @Test(priority = 38, description = "Verify edit restricted for closed complaint")
-    // Test Case No: COMP_TC038
+    // Manual Test Case ID: TC677
     public void verifyEditRestrictedForClosedComplaint() {
         throw new SkipException("Requires closed complaint test record");
     }
 
     @Test(priority = 39, description = "Verify delete allowed for open complaint")
-    // Test Case No: COMP_TC039
+    // Manual Test Case ID: TC678
     public void verifyDeleteAllowedForOpenComplaint() {
         throw new SkipException("Requires disposable open complaint test record");
     }
 
     @Test(priority = 40, description = "Verify delete restricted for closed complaint")
-    // Test Case No: COMP_TC040
+    // Manual Test Case ID: TC679
     public void verifyDeleteRestrictedForClosedComplaint() {
         throw new SkipException("Requires closed complaint test record");
     }

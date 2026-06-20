@@ -55,14 +55,14 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 1, description = "TC001 - Verify login page loads with valid URL")
-    // Test Case No: LOGIN_TC001
+    // Manual Test Case ID: TC001
     public void verifyLoginPageLoadsWithValidUrl() {
         Assert.assertTrue(driver.getCurrentUrl().contains("/login"), "Login URL should be loaded");
         Assert.assertTrue(driver.findElement(emailField).isDisplayed(), "Email field should be visible");
     }
 
     @Test(priority = 2, description = "TC002 - Verify login page loads on refresh")
-    // Test Case No: LOGIN_TC002
+    // Manual Test Case ID: TC002
     public void verifyLoginPageLoadsOnRefresh() {
         driver.navigate().refresh();
 
@@ -71,7 +71,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 3, description = "TC006, TC011-TC015 - Verify login page UI elements")
-    // Test Case No: LOGIN_TC003
+    // Manual Test Case ID: TC006, TC011, TC015
     public void verifyLoginPageUiElements() {
         Assert.assertTrue(driver.findElement(loginTitle).isDisplayed(), "Login title should be visible");
         Assert.assertTrue(driver.findElement(emailField).isDisplayed(), "Email field should be visible");
@@ -81,13 +81,13 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 4, description = "TC019 - Verify eye icon is present")
-    // Test Case No: LOGIN_TC004
+    // Manual Test Case ID: TC019
     public void verifyPasswordEyeIconIsPresent() {
         Assert.assertTrue(driver.findElements(eyeIcon).size() > 0, "Password eye icon should be present");
     }
 
     @Test(priority = 5, description = "TC021, TC033, TC052, TC053 - Verify password masking and visibility toggle")
-    // Test Case No: LOGIN_TC005
+    // Manual Test Case ID: TC021, TC033, TC052, TC053
     public void verifyPasswordMaskingAndVisibilityToggle() {
         WebElement passwordInput = driver.findElement(passwordField);
         passwordInput.sendKeys("Test@123");
@@ -105,13 +105,13 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 6, description = "TC022 - Verify Forgot Password link visible")
-    // Test Case No: LOGIN_TC006
+    // Manual Test Case ID: TC022
     public void verifyForgotPasswordLinkVisible() {
         Assert.assertTrue(driver.findElement(forgotPasswordLink).isDisplayed(), "Forgot Password link should be visible");
     }
 
     @Test(priority = 7, description = "TC023, TC041, TC068 - Verify Forgot Password navigation")
-    // Test Case No: LOGIN_TC007
+    // Manual Test Case ID: TC023, TC041, TC068
     public void verifyForgotPasswordNavigation() {
         driver.findElement(forgotPasswordLink).click();
 
@@ -124,13 +124,13 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 8, description = "TC024 - Verify version text displayed")
-    // Test Case No: LOGIN_TC008
+    // Manual Test Case ID: TC024
     public void verifyVersionTextDisplayed() {
         Assert.assertTrue(driver.findElement(versionText).isDisplayed(), "Beta version should be visible");
     }
 
     @Test(priority = 9, description = "TC026 - Verify email field accepts valid input")
-    // Test Case No: LOGIN_TC009
+    // Manual Test Case ID: TC026
     public void verifyEmailFieldAcceptsValidInput() {
         WebElement emailInput = driver.findElement(emailField);
         emailInput.clear();
@@ -140,7 +140,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 10, description = "TC031 - Verify password field accepts input")
-    // Test Case No: LOGIN_TC010
+    // Manual Test Case ID: TC031
     public void verifyPasswordFieldAcceptsInput() {
         WebElement passwordInput = driver.findElement(passwordField);
         passwordInput.clear();
@@ -150,7 +150,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 11, description = "TC028, TC034, TC038, TC056, TC064 - Verify mandatory validations for empty fields")
-    // Test Case No: LOGIN_TC011
+    // Manual Test Case ID: TC028, TC034, TC038, TC056, TC064
     public void verifyMandatoryValidationForEmptyFields() {
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
 
@@ -158,7 +158,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 12, description = "TC065 - Verify login with only email")
-    // Test Case No: LOGIN_TC012
+    // Manual Test Case ID: TC065
     public void verifyLoginWithOnlyEmail() {
         driver.findElement(emailField).sendKeys(validEmail);
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
@@ -167,7 +167,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 13, description = "TC066 - Verify login with only password")
-    // Test Case No: LOGIN_TC013
+    // Manual Test Case ID: TC066
     public void verifyLoginWithOnlyPassword() {
         driver.findElement(passwordField).sendKeys(getPassword());
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
@@ -176,7 +176,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 14, description = "TC037, TC062 - Verify login with invalid password")
-    // Test Case No: LOGIN_TC014
+    // Manual Test Case ID: TC037, TC062
     public void verifyLoginWithInvalidPassword() {
         driver.findElement(emailField).sendKeys(validEmail);
         driver.findElement(passwordField).sendKeys(invalidPassword);
@@ -186,7 +186,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 15, description = "TC063 - Verify login with invalid email")
-    // Test Case No: LOGIN_TC015
+    // Manual Test Case ID: TC063
     public void verifyLoginWithInvalidEmail() {
         driver.findElement(emailField).sendKeys(invalidEmail);
         driver.findElement(passwordField).sendKeys(getPassword());
@@ -196,7 +196,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 16, description = "TC036, TC061 - Verify login with valid credentials")
-    // Test Case No: LOGIN_TC016
+    // Manual Test Case ID: TC036, TC061
     public void verifyLoginWithValidCredentials() {
         loginWithValidCredentials();
 
@@ -204,7 +204,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 17, description = "TC040, TC067 - Verify login using Enter key")
-    // Test Case No: LOGIN_TC017
+    // Manual Test Case ID: TC040, TC067
     public void verifyLoginUsingEnterKey() {
         driver.findElement(emailField).sendKeys(validEmail);
         driver.findElement(passwordField).sendKeys(getPassword());
@@ -214,7 +214,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 18, description = "TC046, TC074 - Verify redirect after login")
-    // Test Case No: LOGIN_TC018
+    // Manual Test Case ID: TC046, TC074
     public void verifyRedirectAfterLogin() {
         loginWithValidCredentials();
 
@@ -223,7 +223,7 @@ public class EasyQLoginValidation {
     }
 
     @Test(priority = 19, description = "TC049, TC077 - Verify browser back button after login")
-    // Test Case No: LOGIN_TC019
+    // Manual Test Case ID: TC049, TC077
     public void verifyBackButtonAfterLogin() {
         loginWithValidCredentials();
         Assert.assertTrue(waitUntilLoginPageIsLeft(), "Dashboard should be displayed after login");

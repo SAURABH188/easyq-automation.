@@ -15,7 +15,7 @@ public class LoginTest extends BaseTest {
     private final By dashboardHeading = By.xpath("//*[contains(normalize-space(.),'Dashboard')]");
 
     @Test
-    // Test Case No: SMOKE_TC001
+    // Manual Test Case ID: TC001
     public void userCanOpenLoginPage() {
         LoginPage loginPage = new LoginPage(driver, config.getInt("explicitWait"));
 
@@ -23,7 +23,7 @@ public class LoginTest extends BaseTest {
     }
 
     @Test
-    // Test Case No: SMOKE_TC002
+    // Manual Test Case ID: TC036, TC061
     public void validUserCanLogin() {
         LoginPage loginPage = new LoginPage(driver, config.getInt("explicitWait"));
 

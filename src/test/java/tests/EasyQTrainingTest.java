@@ -96,114 +96,114 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 1, description = "Verify Training module loads successfully")
-    // Test Case No: TRAIN_TC001
+    // Manual Test Case ID: TC590
     public void verifyTrainingModuleLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(trainingTitle)).isDisplayed(),
                 "Training module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify module loads with data")
-    // Test Case No: TRAIN_TC002
+    // Manual Test Case ID: TC591
     public void verifyModuleLoadsWithData() {
         Assert.assertTrue(hasTrainingDataOrPageLoaded(), "Training module should display data or a valid empty state");
     }
 
     @Test(priority = 3, description = "Verify no UI break on page load")
-    // Test Case No: TRAIN_TC003
+    // Manual Test Case ID: TC592
     public void verifyNoUiBreakOnPageLoad() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Training page body should be visible");
         Assert.assertTrue(driver.findElement(trainingTitle).isDisplayed(), "Training title should be visible");
     }
 
     @Test(priority = 4, description = "Verify access for Admin")
-    // Test Case No: TRAIN_TC004
+    // Manual Test Case ID: TC593
     public void verifyAccessForAdmin() {
         Assert.assertTrue(driver.findElement(trainingTitle).isDisplayed(), "Admin/current user should access Training module");
     }
 
     @Test(priority = 5, description = "Verify Admin assignment access")
-    // Test Case No: TRAIN_TC005
+    // Manual Test Case ID: TC594
     public void verifyAdminAssignmentAccess() {
         Assert.assertTrue(isElementDisplayed(assignButton) || driver.findElement(trainingTitle).isDisplayed(),
                 "Admin/current user should have Training access and assignment may be visible based on permissions");
     }
 
     @Test(priority = 6, description = "Verify assigned user details")
-    // Test Case No: TRAIN_TC006
+    // Manual Test Case ID: TC595
     public void verifyAssignedUserDetails() {
         Assert.assertTrue(hasTrainingDataOrPageLoaded(), "Assigned user details should display when training data exists");
     }
 
     @Test(priority = 7, description = "Verify training linked to document")
-    // Test Case No: TRAIN_TC007
+    // Manual Test Case ID: TC596
     public void verifyTrainingLinkedToDocument() {
         Assert.assertTrue(getBodyText().contains("Document") || hasTrainingDataOrPageLoaded(),
                 "Training should show linked document/course information when data exists");
     }
 
     @Test(priority = 8, description = "Verify training visible to user")
-    // Test Case No: TRAIN_TC008
+    // Manual Test Case ID: TC597
     public void verifyTrainingVisibleToUser() {
         Assert.assertTrue(hasTrainingDataOrPageLoaded(), "Training should be visible to assigned/current user when available");
     }
 
     @Test(priority = 9, description = "Verify user can access training")
-    // Test Case No: TRAIN_TC009
+    // Manual Test Case ID: TC598
     public void verifyUserCanAccessTraining() {
         Assert.assertTrue(driver.findElement(trainingTitle).isDisplayed(), "User should be able to access Training module");
     }
 
     @Test(priority = 10, description = "Verify completion status update")
-    // Test Case No: TRAIN_TC010
+    // Manual Test Case ID: TC599
     public void verifyCompletionStatusUpdate() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasTrainingDataOrPageLoaded(),
                 "Training completion/status should be visible when data exists");
     }
 
     @Test(priority = 11, description = "Verify completion date recorded")
-    // Test Case No: TRAIN_TC011
+    // Manual Test Case ID: TC600
     public void verifyCompletionDateRecorded() {
         Assert.assertTrue(isElementDisplayed(dateText) || hasTrainingDataOrPageLoaded(),
                 "Completion/due date should be visible when training data exists");
     }
 
     @Test(priority = 12, description = "Verify Pending training count")
-    // Test Case No: TRAIN_TC012
+    // Manual Test Case ID: TC601
     public void verifyPendingTrainingCount() {
         Assert.assertTrue(getBodyText().contains("Pending") || hasTrainingDataOrPageLoaded(),
                 "Pending training count/status should be visible when data exists");
     }
 
     @Test(priority = 13, description = "Verify Completed training count")
-    // Test Case No: TRAIN_TC013
+    // Manual Test Case ID: TC602
     public void verifyCompletedTrainingCount() {
         Assert.assertTrue(getBodyText().contains("Completed") || hasTrainingDataOrPageLoaded(),
                 "Completed training count/status should be visible when data exists");
     }
 
     @Test(priority = 14, description = "Verify status updates correctly")
-    // Test Case No: TRAIN_TC014
+    // Manual Test Case ID: TC603
     public void verifyStatusUpdatesCorrectly() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasTrainingDataOrPageLoaded(),
                 "Training status should reflect correctly in UI");
     }
 
     @Test(priority = 15, description = "Verify user view-only access")
-    // Test Case No: TRAIN_TC015
+    // Manual Test Case ID: TC604
     public void verifyUserViewOnlyAccess() {
         Assert.assertTrue(driver.findElement(trainingTitle).isDisplayed(),
                 "Training should be viewable when user has access");
     }
 
     @Test(priority = 16, description = "Verify status reflects correctly")
-    // Test Case No: TRAIN_TC016
+    // Manual Test Case ID: TC605
     public void verifyStatusReflectsCorrectly() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasTrainingDataOrPageLoaded(),
                 "Training status should reflect correctly");
     }
 
     @Test(priority = 17, description = "Verify empty assignment handling")
-    // Test Case No: TRAIN_TC017
+    // Manual Test Case ID: TC606
     public void verifyEmptyAssignmentHandling() {
         openAssignFormIfAvailable();
         clickSubmitIfAvailable();
@@ -213,51 +213,51 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 18, description = "Verify multiple training assignments")
-    // Test Case No: TRAIN_TC018
+    // Manual Test Case ID: TC607
     public void verifyMultipleTrainingAssignments() {
         Assert.assertTrue(hasTrainingDataOrPageLoaded(),
                 "Multiple training assignments should be handled when data exists");
     }
 
     @Test(priority = 19, description = "Verify long text handling")
-    // Test Case No: TRAIN_TC019
+    // Manual Test Case ID: TC608
     public void verifyLongTextHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Training module should handle long text without UI break");
     }
 
     @Test(priority = 20, description = "Verify training assignment")
-    // Test Case No: TRAIN_TC020
+    // Manual Test Case ID: TC609
     public void verifyTrainingAssignment() {
         throw new SkipException("Requires assignment form locators, training data, and test users");
     }
 
     @Test(priority = 21, description = "Verify multiple users assignment")
-    // Test Case No: TRAIN_TC021
+    // Manual Test Case ID: TC610
     public void verifyMultipleUsersAssignment() {
         throw new SkipException("Requires multiple test users and user selector locator");
     }
 
     @Test(priority = 22, description = "Verify document/course selection")
-    // Test Case No: TRAIN_TC022
+    // Manual Test Case ID: TC611
     public void verifyDocumentCourseSelection() {
         throw new SkipException("Requires document/course selector locator and option values");
     }
 
     @Test(priority = 23, description = "Verify due date assignment")
-    // Test Case No: TRAIN_TC023
+    // Manual Test Case ID: TC612
     public void verifyDueDateAssignment() {
         throw new SkipException("Requires date picker locator");
     }
 
     @Test(priority = 24, description = "Verify training title/description")
-    // Test Case No: TRAIN_TC024
+    // Manual Test Case ID: TC613
     public void verifyTrainingTitleDescription() {
         throw new SkipException("Requires title/description field locators and save workflow");
     }
 
     @Test(priority = 25, description = "Verify user can start training")
-    // Test Case No: TRAIN_TC025
+    // Manual Test Case ID: TC614
     public void verifyUserCanStartTraining() {
         if (!isElementDisplayed(startButton)) {
             throw new SkipException("Start Training button is unavailable or locator needs confirmation");
@@ -266,7 +266,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 26, description = "Verify training completion")
-    // Test Case No: TRAIN_TC026
+    // Manual Test Case ID: TC615
     public void verifyTrainingCompletion() {
         if (!isElementDisplayed(completeButton)) {
             throw new SkipException("Complete Training button is unavailable or locator needs confirmation");
@@ -275,37 +275,37 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 27, description = "Verify training reminder")
-    // Test Case No: TRAIN_TC027
+    // Manual Test Case ID: TC616
     public void verifyTrainingReminder() {
         throw new SkipException("Requires reminder trigger and notification/email validation");
     }
 
     @Test(priority = 28, description = "Verify overdue indication")
-    // Test Case No: TRAIN_TC028
+    // Manual Test Case ID: TC617
     public void verifyOverdueIndication() {
         throw new SkipException("Requires overdue training test data");
     }
 
     @Test(priority = 29, description = "Verify Assignee restriction")
-    // Test Case No: TRAIN_TC029
+    // Manual Test Case ID: TC618
     public void verifyAssigneeRestriction() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 30, description = "Verify restricted access for Assignee")
-    // Test Case No: TRAIN_TC030
+    // Manual Test Case ID: TC619
     public void verifyRestrictedAccessForAssignee() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 31, description = "Verify data saved correctly")
-    // Test Case No: TRAIN_TC031
+    // Manual Test Case ID: TC620
     public void verifyDataSavedCorrectly() {
         throw new SkipException("Requires assignment save workflow with unique test data");
     }
 
     @Test(priority = 32, description = "Verify Training search functionality")
-    // Test Case No: TRAIN_TC032
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingSearchFunctionality() {
         if (!isElementDisplayed(searchInput)) {
             throw new SkipException("Search input is not available or locator needs confirmation");
@@ -318,7 +318,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 33, description = "Verify Training search with no results")
-    // Test Case No: TRAIN_TC033
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingSearchWithNoResults() {
         if (!isElementDisplayed(searchInput)) {
             throw new SkipException("Search input is not available or locator needs confirmation");
@@ -332,14 +332,14 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 34, description = "Verify Training status filter")
-    // Test Case No: TRAIN_TC034
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingStatusFilter() {
         Assert.assertTrue(isElementDisplayed(filterControl) || hasTrainingDataOrPageLoaded(),
                 "Training status filter should be available when filtering is supported");
     }
 
     @Test(priority = 35, description = "Verify Training pagination")
-    // Test Case No: TRAIN_TC035
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingPagination() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Pagination next button is not available for current training data");
@@ -354,14 +354,14 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 36, description = "Verify Training empty state")
-    // Test Case No: TRAIN_TC036
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingEmptyState() {
         Assert.assertTrue(isElementDisplayed(noDataMessage) || hasTrainingDataOrPageLoaded(),
                 "Training empty state should be handled correctly");
     }
 
     @Test(priority = 37, description = "Verify Training detail view opens")
-    // Test Case No: TRAIN_TC037
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingDetailViewOpens() {
         if (!isElementDisplayed(viewButton)) {
             throw new SkipException("View button is not available for current training records");
@@ -375,28 +375,28 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 38, description = "Verify assigned training tab or section")
-    // Test Case No: TRAIN_TC038
+    // Manual Test Case ID: TC590-TC620
     public void verifyAssignedTrainingTabOrSection() {
         Assert.assertTrue(isElementDisplayed(assignmentTab) || hasTrainingDataOrPageLoaded(),
                 "Assigned/My Training/Pending section should be visible when supported");
     }
 
     @Test(priority = 39, description = "Verify Training download option")
-    // Test Case No: TRAIN_TC039
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingDownloadOption() {
         Assert.assertTrue(isElementDisplayed(downloadButton) || hasTrainingDataOrPageLoaded(),
                 "Download option should be visible when training document/download is available");
     }
 
     @Test(priority = 40, description = "Verify Training reminder button visibility")
-    // Test Case No: TRAIN_TC040
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingReminderButtonVisibility() {
         Assert.assertTrue(isElementDisplayed(reminderButton) || hasTrainingDataOrPageLoaded(),
                 "Reminder/Notify option should be visible when reminders are supported");
     }
 
     @Test(priority = 41, description = "Verify Training records do not duplicate after refresh")
-    // Test Case No: TRAIN_TC041
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingRecordsDoNotDuplicateAfterRefresh() {
         String beforeRefresh = getBodyText();
         driver.navigate().refresh();
@@ -408,7 +408,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 42, description = "Verify Training page scroll behavior")
-    // Test Case No: TRAIN_TC042
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingPageScrollBehavior() {
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
         waitForSmallDelay();
@@ -417,44 +417,44 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 43, description = "Verify Training special character display")
-    // Test Case No: TRAIN_TC043
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingSpecialCharacterDisplay() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Training page should not break when special characters are present in data");
     }
 
     @Test(priority = 44, description = "Verify Training assignment duplicate handling")
-    // Test Case No: TRAIN_TC044
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingAssignmentDuplicateHandling() {
         throw new SkipException("Requires duplicate assignment test data and save workflow");
     }
 
     @Test(priority = 45, description = "Verify Training reassignment flow")
-    // Test Case No: TRAIN_TC045
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingReassignmentFlow() {
         throw new SkipException("Requires existing assigned training and reassignment controls");
     }
 
     @Test(priority = 46, description = "Verify Training escalation for overdue assignment")
-    // Test Case No: TRAIN_TC046
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingEscalationForOverdueAssignment() {
         throw new SkipException("Requires overdue training data and escalation/reminder validation");
     }
 
     @Test(priority = 47, description = "Verify Training completion certificate or acknowledgement")
-    // Test Case No: TRAIN_TC047
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingCompletionCertificateOrAcknowledgement() {
         throw new SkipException("Requires completed training record and certificate/acknowledgement rule");
     }
 
     @Test(priority = 48, description = "Verify Training audit log after assignment")
-    // Test Case No: TRAIN_TC048
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingAuditLogAfterAssignment() {
         throw new SkipException("Requires assigning training and validating related Active Logs entry");
     }
 
     @Test(priority = 49, description = "PDF Flow - Verify Training module tabs")
-    // Test Case No: TRAIN_TC049
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingModuleTabsFromPdfFlow() {
         Assert.assertTrue(isElementDisplayed(trainingModuleTab) || getBodyText().contains("Training Module"),
                 "Training Module tab should be visible");
@@ -467,7 +467,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 50, description = "PDF Flow - Verify Create Training form opens")
-    // Test Case No: TRAIN_TC050
+    // Manual Test Case ID: TC590-TC620
     public void verifyCreateTrainingFormOpensFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -476,7 +476,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 51, description = "PDF Flow - Verify Training Name field")
-    // Test Case No: TRAIN_TC051
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingNameFieldFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -485,7 +485,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 52, description = "PDF Flow - Verify training material options")
-    // Test Case No: TRAIN_TC052
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingMaterialOptionsFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -498,7 +498,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 53, description = "PDF Flow - Verify Add Questionnaire Yes/No options")
-    // Test Case No: TRAIN_TC053
+    // Manual Test Case ID: TC590-TC620
     public void verifyAddQuestionnaireYesNoOptionsFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -511,7 +511,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 54, description = "PDF Flow - Verify quiz question fields become mandatory when questionnaire is Yes")
-    // Test Case No: TRAIN_TC054
+    // Manual Test Case ID: TC590-TC620
     public void verifyQuizQuestionFieldsFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -522,7 +522,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 55, description = "PDF Flow - Verify quiz settings")
-    // Test Case No: TRAIN_TC055
+    // Manual Test Case ID: TC590-TC620
     public void verifyQuizSettingsFromPdfFlow() {
         openCreateTrainingFormIfAvailable();
 
@@ -535,7 +535,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 56, description = "PDF Flow - Verify post-training creation actions")
-    // Test Case No: TRAIN_TC056
+    // Manual Test Case ID: TC590-TC620
     public void verifyPostTrainingCreationActionsFromPdfFlow() {
         Assert.assertTrue(isElementDisplayed(cancelTrainingAction) || hasTrainingDataOrPageLoaded(),
                 "Cancel Training action should be available when training exists");
@@ -550,7 +550,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 57, description = "PDF Flow - Verify Assign Training configuration")
-    // Test Case No: TRAIN_TC057
+    // Manual Test Case ID: TC590-TC620
     public void verifyAssignTrainingConfigurationFromPdfFlow() {
         if (!isElementDisplayed(assignTrainingAction)) {
             throw new SkipException("Assign Training action is not available for current data");
@@ -566,28 +566,28 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 58, description = "PDF Flow - Verify My Training receives assigned training")
-    // Test Case No: TRAIN_TC058
+    // Manual Test Case ID: TC590-TC620
     public void verifyMyTrainingReceivesAssignedTrainingFromPdfFlow() {
         Assert.assertTrue(isElementDisplayed(myTrainingTab) || getBodyText().contains("My Training"),
                 "Assigned training should appear under My Training for assigned users");
     }
 
     @Test(priority = 59, description = "PDF Flow - Verify Training Details screen shows material status and action tab")
-    // Test Case No: TRAIN_TC059
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingDetailsScreenFromPdfFlow() {
         Assert.assertTrue(getBodyText().contains("Training") || hasTrainingDataOrPageLoaded(),
                 "Training details should show training material/status/action data when opened");
     }
 
     @Test(priority = 60, description = "PDF Flow - Verify acknowledgement is required before proceeding")
-    // Test Case No: TRAIN_TC060
+    // Manual Test Case ID: TC590-TC620
     public void verifyAcknowledgementRequiredBeforeProceedingFromPdfFlow() {
         Assert.assertTrue(isElementDisplayed(acknowledgementCheckbox) || getBodyText().contains("Acknowledgment") || getBodyText().contains("Acknowledgement") || hasTrainingDataOrPageLoaded(),
                 "Authorization acknowledgement should be available before completion when applicable");
     }
 
     @Test(priority = 61, description = "PDF Flow - Verify Submit Acknowledgement action")
-    // Test Case No: TRAIN_TC061
+    // Manual Test Case ID: TC590-TC620
     public void verifySubmitAcknowledgementActionFromPdfFlow() {
         if (!isElementDisplayed(acknowledgementCheckbox) || !isElementDisplayed(submitAcknowledgementButton)) {
             throw new SkipException("Acknowledgement controls are not available for current training data");
@@ -602,14 +602,14 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 62, description = "PDF Flow - Verify quiz evaluation score/pass/fail")
-    // Test Case No: TRAIN_TC062
+    // Manual Test Case ID: TC590-TC620
     public void verifyQuizEvaluationScorePassFailFromPdfFlow() {
         Assert.assertTrue(getBodyText().contains("Score") || getBodyText().contains("PASS") || getBodyText().contains("Fail") || hasTrainingDataOrPageLoaded(),
                 "Quiz score and Pass/Fail status should display when quiz is completed");
     }
 
     @Test(priority = 63, description = "PDF Flow - Verify Mark As Completed")
-    // Test Case No: TRAIN_TC063
+    // Manual Test Case ID: TC590-TC620
     public void verifyMarkAsCompletedFromPdfFlow() {
         if (!isElementDisplayed(markCompletedButton)) {
             throw new SkipException("Mark As Completed button is not available for current training data");
@@ -623,7 +623,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 64, description = "PDF Flow - Verify Training Logs columns")
-    // Test Case No: TRAIN_TC064
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingLogsColumnsFromPdfFlow() {
         openTrainingLogsIfAvailable();
 
@@ -640,7 +640,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 65, description = "PDF Flow - Verify Training Logs All Tasks and My Tasks filters")
-    // Test Case No: TRAIN_TC065
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingLogsFiltersFromPdfFlow() {
         openTrainingLogsIfAvailable();
 
@@ -649,7 +649,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 66, description = "PDF Flow - Verify Training Logs export CSV")
-    // Test Case No: TRAIN_TC066
+    // Manual Test Case ID: TC590-TC620
     public void verifyTrainingLogsExportCsvFromPdfFlow() {
         openTrainingLogsIfAvailable();
 
@@ -658,7 +658,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 67, description = "PDF Flow - Verify Analytics dashboard")
-    // Test Case No: TRAIN_TC067
+    // Manual Test Case ID: TC590-TC620
     public void verifyAnalyticsDashboardFromPdfFlow() {
         openAnalyticsIfAvailable();
 
@@ -667,7 +667,7 @@ public class EasyQTrainingTest {
     }
 
     @Test(priority = 68, description = "PDF Flow - Verify Analytics month and year filters")
-    // Test Case No: TRAIN_TC068
+    // Manual Test Case ID: TC590-TC620
     public void verifyAnalyticsMonthYearFiltersFromPdfFlow() {
         openAnalyticsIfAvailable();
 

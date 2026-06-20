@@ -45,7 +45,7 @@ public class EasyQCredentialValidationTest extends BaseTest {
     }
 
     @Test(priority = 1, dataProvider = "allRoleAccounts", description = "Verify each configured role user can login")
-    // Test Case No: CRED_TC001 to CRED_TC010
+    // Manual Test Case ID: TC036, TC061, TC192-TC197
     public void verifyEachConfiguredUserCanLogin(RoleAccount account) {
         String username = getUsername(account);
         String password = getPassword(account);

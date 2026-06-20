@@ -60,62 +60,62 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 1, description = "Verify Active Logs page loads successfully")
-    // Test Case No: ACTLOG_TC001
+    // Manual Test Case ID: TC333
     public void verifyActiveLogsPageLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(activeLogsTitle)).isDisplayed(),
                 "Active Logs page should load successfully");
     }
 
     @Test(priority = 2, description = "Verify page loads with log data")
-    // Test Case No: ACTLOG_TC002
+    // Manual Test Case ID: TC334
     public void verifyPageLoadsWithLogData() {
         Assert.assertTrue(hasLogsOrEmptyState(), "Active Logs page should show logs or a valid empty state");
     }
 
     @Test(priority = 3, description = "Verify no UI break on page load")
-    // Test Case No: ACTLOG_TC003
+    // Manual Test Case ID: TC335
     public void verifyNoUiBreakOnPageLoad() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "Page body should be visible");
         Assert.assertTrue(driver.findElement(activeLogsTitle).isDisplayed(), "Active Logs title should be visible");
     }
 
     @Test(priority = 4, description = "Verify Today label is displayed")
-    // Test Case No: ACTLOG_TC004
+    // Manual Test Case ID: TC336
     public void verifyTodayLabelIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(todayLabel) || hasLogsOrEmptyState(),
                 "Today label should be visible when today's logs are available");
     }
 
     @Test(priority = 5, description = "Verify Yesterday label is displayed")
-    // Test Case No: ACTLOG_TC005
+    // Manual Test Case ID: TC337
     public void verifyYesterdayLabelIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(yesterdayLabel) || hasLogsOrEmptyState(),
                 "Yesterday label should be visible when yesterday's logs are available");
     }
 
     @Test(priority = 6, description = "Verify date format display")
-    // Test Case No: ACTLOG_TC006
+    // Manual Test Case ID: TC338
     public void verifyDateFormatDisplay() {
         Assert.assertTrue(isElementDisplayed(dateText) || hasLogsOrEmptyState(),
                 "Date should be displayed when dated logs are available");
     }
 
     @Test(priority = 7, description = "Verify date consistency across sections")
-    // Test Case No: ACTLOG_TC007
+    // Manual Test Case ID: TC339
     public void verifyDateConsistencyAcrossSections() {
         List<WebElement> dates = driver.findElements(dateText);
         Assert.assertTrue(dates.size() >= 0, "Date section should be readable without errors");
     }
 
     @Test(priority = 8, description = "Verify user initials are displayed")
-    // Test Case No: ACTLOG_TC008
+    // Manual Test Case ID: TC340
     public void verifyUserInitialsAreDisplayed() {
         Assert.assertTrue(isElementDisplayed(userInitials) || hasLogsOrEmptyState(),
                 "User initials should be displayed when logs are available");
     }
 
     @Test(priority = 9, description = "Verify user name is displayed")
-    // Test Case No: ACTLOG_TC009
+    // Manual Test Case ID: TC341
     public void verifyUserNameIsDisplayed() {
         String pageText = getBodyText();
         Assert.assertTrue(pageText.matches("(?s).*[A-Z][a-z]+\\s+[A-Z][a-z]+.*") || hasLogsOrEmptyState(),
@@ -123,28 +123,28 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 10, description = "Verify activity message is displayed")
-    // Test Case No: ACTLOG_TC010
+    // Manual Test Case ID: TC342
     public void verifyActivityMessageIsDisplayed() {
         Assert.assertTrue(getBodyText().length() > 50 || hasLogsOrEmptyState(),
                 "Activity message should be displayed when logs are available");
     }
 
     @Test(priority = 11, description = "Verify long activity message handling")
-    // Test Case No: ACTLOG_TC011
+    // Manual Test Case ID: TC343
     public void verifyLongActivityMessageHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Long activity text should not break the page");
     }
 
     @Test(priority = 12, description = "Verify time is displayed")
-    // Test Case No: ACTLOG_TC012
+    // Manual Test Case ID: TC344
     public void verifyTimeIsDisplayed() {
         Assert.assertTrue(isElementDisplayed(timeText) || hasLogsOrEmptyState(),
                 "Time should be displayed when logs are available");
     }
 
     @Test(priority = 13, description = "Verify time format accuracy")
-    // Test Case No: ACTLOG_TC013
+    // Manual Test Case ID: TC345
     public void verifyTimeFormatAccuracy() {
         String pageText = getBodyText();
         Assert.assertTrue(pageText.matches("(?s).*(\\d{1,2}:\\d{2}|AM|PM).*") || hasLogsOrEmptyState(),
@@ -152,54 +152,54 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 14, description = "Verify alignment of log entries")
-    // Test Case No: ACTLOG_TC014
+    // Manual Test Case ID: TC346
     public void verifyAlignmentOfLogEntries() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "Log entries should render without layout failure");
     }
 
     @Test(priority = 15, description = "Verify logs grouped under Today")
-    // Test Case No: ACTLOG_TC015
+    // Manual Test Case ID: TC347
     public void verifyLogsGroupedUnderToday() {
         Assert.assertTrue(isElementDisplayed(todayLabel) || hasLogsOrEmptyState(),
                 "Logs should be grouped under Today when today's logs exist");
     }
 
     @Test(priority = 16, description = "Verify logs grouped under Yesterday")
-    // Test Case No: ACTLOG_TC016
+    // Manual Test Case ID: TC348
     public void verifyLogsGroupedUnderYesterday() {
         Assert.assertTrue(isElementDisplayed(yesterdayLabel) || hasLogsOrEmptyState(),
                 "Logs should be grouped under Yesterday when yesterday's logs exist");
     }
 
     @Test(priority = 17, description = "Verify correct grouping based on date")
-    // Test Case No: ACTLOG_TC017
+    // Manual Test Case ID: TC349
     public void verifyCorrectGroupingBasedOnDate() {
         Assert.assertTrue(isElementDisplayed(todayLabel) || isElementDisplayed(yesterdayLabel) || hasLogsOrEmptyState(),
                 "Logs should be grouped by available date sections");
     }
 
     @Test(priority = 18, description = "Verify latest log appears on top")
-    // Test Case No: ACTLOG_TC018
+    // Manual Test Case ID: TC350
     public void verifyLatestLogAppearsOnTop() {
         Assert.assertTrue(hasLogsOrEmptyState(), "Latest log should appear on top when logs are available");
     }
 
     @Test(priority = 19, description = "Verify logs sorted in descending order")
-    // Test Case No: ACTLOG_TC019
+    // Manual Test Case ID: TC351
     public void verifyLogsSortedInDescendingOrder() {
         Assert.assertTrue(hasLogsOrEmptyState(), "Logs should be sorted in descending order when data is available");
     }
 
     @Test(priority = 20, description = "Verify pagination controls displayed")
-    // Test Case No: ACTLOG_TC020
+    // Manual Test Case ID: TC352
     public void verifyPaginationControlsDisplayed() {
         Assert.assertTrue(isElementDisplayed(paginationControl) || hasLogsOrEmptyState(),
                 "Pagination should be visible when log count exceeds one page");
     }
 
     @Test(priority = 21, description = "Verify page navigation")
-    // Test Case No: ACTLOG_TC021
+    // Manual Test Case ID: TC353
     public void verifyPageNavigation() {
         if (!isElementDisplayed(nextButton)) {
             throw new SkipException("Next page control is not available for current log data");
@@ -214,7 +214,7 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 22, description = "Verify next/previous navigation")
-    // Test Case No: ACTLOG_TC022
+    // Manual Test Case ID: TC354
     public void verifyNextPreviousNavigation() {
         if (!isElementDisplayed(nextButton) || !isElementDisplayed(previousButton)) {
             throw new SkipException("Next/previous controls are not available for current log data");
@@ -229,13 +229,13 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 23, description = "Verify logs per page")
-    // Test Case No: ACTLOG_TC023
+    // Manual Test Case ID: TC355
     public void verifyLogsPerPage() {
         Assert.assertTrue(hasLogsOrEmptyState(), "Logs per page should be displayed correctly");
     }
 
     @Test(priority = 24, description = "Verify vertical scrolling works")
-    // Test Case No: ACTLOG_TC024
+    // Manual Test Case ID: TC356
     public void verifyVerticalScrollingWorks() {
         JavascriptExecutor js = (JavascriptExecutor) driver;
         long before = ((Number) js.executeScript("return window.pageYOffset;")).longValue();
@@ -247,7 +247,7 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 25, description = "Verify scroll limit handling")
-    // Test Case No: ACTLOG_TC025
+    // Manual Test Case ID: TC357
     public void verifyScrollLimitHandling() {
         JavascriptExecutor js = (JavascriptExecutor) driver;
         js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
@@ -258,50 +258,50 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 26, description = "Verify multiple logs with same timestamp")
-    // Test Case No: ACTLOG_TC026
+    // Manual Test Case ID: TC358
     public void verifyMultipleLogsWithSameTimestamp() {
         Assert.assertTrue(hasLogsOrEmptyState(), "Multiple logs with same timestamp should display correctly when available");
     }
 
     @Test(priority = 27, description = "Verify large number of logs handling")
-    // Test Case No: ACTLOG_TC027
+    // Manual Test Case ID: TC359
     public void verifyLargeNumberOfLogsHandling() {
         Assert.assertTrue(driver.findElement(activeLogsTitle).isDisplayed(),
                 "System should handle available log data properly");
     }
 
     @Test(priority = 28, description = "Verify log details match actual actions")
-    // Test Case No: ACTLOG_TC028
+    // Manual Test Case ID: TC360
     public void verifyLogDetailsMatchActualActions() {
         throw new SkipException("Requires performing a known audited action before validating the created log");
     }
 
     @Test(priority = 29, description = "Verify user-specific logs")
-    // Test Case No: ACTLOG_TC029
+    // Manual Test Case ID: TC361
     public void verifyUserSpecificLogs() {
         throw new SkipException("Requires confirmed business rule for which logs current user should see");
     }
 
     @Test(priority = 30, description = "Verify duplicate logs handling")
-    // Test Case No: ACTLOG_TC030
+    // Manual Test Case ID: TC362
     public void verifyDuplicateLogsHandling() {
         throw new SkipException("Requires duplicate log test data setup");
     }
 
     @Test(priority = 31, description = "Verify behavior when no logs available")
-    // Test Case No: ACTLOG_TC031
+    // Manual Test Case ID: TC363
     public void verifyBehaviorWhenNoLogsAvailable() {
         throw new SkipException("Requires user/test environment with no active logs");
     }
 
     @Test(priority = 32, description = "Verify empty state message")
-    // Test Case No: ACTLOG_TC032
+    // Manual Test Case ID: TC364
     public void verifyEmptyStateMessage() {
         throw new SkipException("Requires user/test environment with no active logs");
     }
 
     @Test(priority = 33, description = "PDF Flow - Verify Activity Log tracks login and tool actions")
-    // Test Case No: ACTLOG_TC033
+    // Manual Test Case ID: TC365
     public void verifyPdfFlowActivityLogTracksLoginAndToolActions() {
         String bodyText = getBodyText();
 
@@ -310,7 +310,7 @@ public class EasyQActiveLogsTest {
     }
 
     @Test(priority = 34, description = "PDF Flow - Verify Activity Log available for Admin Document Controller and Assignee")
-    // Test Case No: ACTLOG_TC034
+    // Manual Test Case ID: TC333-TC365
     public void verifyPdfFlowActivityLogAvailableForAllRoles() {
         throw new SkipException("Requires Admin, Document Controller, and Assignee credentials");
     }

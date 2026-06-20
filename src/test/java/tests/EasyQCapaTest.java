@@ -56,40 +56,40 @@ public class EasyQCapaTest {
     }
 
     @Test(priority = 1, description = "Verify CAPA module loads successfully")
-    // Test Case No: CAPA_TC001
+    // Manual Test Case ID: TC548
     public void verifyCapaModuleLoadsSuccessfully() {
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(capaTitle)).isDisplayed(),
                 "CAPA module should load successfully");
     }
 
     @Test(priority = 2, description = "Verify CAPA module loads with data")
-    // Test Case No: CAPA_TC002
+    // Manual Test Case ID: TC549
     public void verifyCapaModuleLoadsWithData() {
         Assert.assertTrue(hasCapaDataOrPageLoaded(), "CAPA module should display data or a valid page state");
     }
 
     @Test(priority = 3, description = "Verify no UI break on page load")
-    // Test Case No: CAPA_TC003
+    // Manual Test Case ID: TC550
     public void verifyNoUiBreakOnPageLoad() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(), "CAPA page body should be visible");
         Assert.assertTrue(driver.findElement(capaTitle).isDisplayed(), "CAPA title should be visible");
     }
 
     @Test(priority = 4, description = "Verify access for Admin")
-    // Test Case No: CAPA_TC004
+    // Manual Test Case ID: TC551
     public void verifyAccessForAdmin() {
         Assert.assertTrue(driver.findElement(capaTitle).isDisplayed(), "Admin/current user should access CAPA module");
     }
 
     @Test(priority = 5, description = "Verify Admin access")
-    // Test Case No: CAPA_TC005
+    // Manual Test Case ID: TC552
     public void verifyAdminAccess() {
         Assert.assertTrue(isElementDisplayed(createButton) || driver.findElement(capaTitle).isDisplayed(),
                 "Admin/current user should be allowed to view or create CAPA based on permissions");
     }
 
     @Test(priority = 6, description = "Verify mandatory fields validation")
-    // Test Case No: CAPA_TC006
+    // Manual Test Case ID: TC553
     public void verifyMandatoryFieldsValidation() {
         openCreateCapaIfAvailable();
 
@@ -103,7 +103,7 @@ public class EasyQCapaTest {
     }
 
     @Test(priority = 7, description = "Verify empty CAPA submission")
-    // Test Case No: CAPA_TC007
+    // Manual Test Case ID: TC554
     public void verifyEmptyCapaSubmission() {
         openCreateCapaIfAvailable();
         clickFirstAvailable(submitButton, saveButton);
@@ -113,215 +113,215 @@ public class EasyQCapaTest {
     }
 
     @Test(priority = 8, description = "Verify workflow status change")
-    // Test Case No: CAPA_TC008
+    // Manual Test Case ID: TC555
     public void verifyWorkflowStatusChange() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasCapaDataOrPageLoaded(),
                 "Workflow status should be visible when CAPA records exist");
     }
 
     @Test(priority = 9, description = "Verify status tracking")
-    // Test Case No: CAPA_TC009
+    // Manual Test Case ID: TC556
     public void verifyStatusTracking() {
         Assert.assertTrue(isElementDisplayed(statusText) || hasCapaDataOrPageLoaded(),
                 "CAPA lifecycle/status should be trackable when records exist");
     }
 
     @Test(priority = 10, description = "Verify lifecycle tracking")
-    // Test Case No: CAPA_TC010
+    // Manual Test Case ID: TC557
     public void verifyLifecycleTracking() {
         String bodyText = getBodyText();
         Assert.assertTrue(bodyText.length() > 50, "CAPA lifecycle page should render readable data");
     }
 
     @Test(priority = 11, description = "Verify data consistency")
-    // Test Case No: CAPA_TC011
+    // Manual Test Case ID: TC558
     public void verifyDataConsistency() {
         Assert.assertTrue(driver.findElement(capaTitle).isDisplayed(), "CAPA data should remain consistent on page load");
     }
 
     @Test(priority = 12, description = "Verify long text handling")
-    // Test Case No: CAPA_TC012
+    // Manual Test Case ID: TC559
     public void verifyLongTextHandling() {
         Assert.assertTrue(driver.findElement(By.tagName("body")).isDisplayed(),
                 "CAPA page should remain stable for long text records");
     }
 
     @Test(priority = 13, description = "Verify multiple CAPA handling")
-    // Test Case No: CAPA_TC013
+    // Manual Test Case ID: TC560
     public void verifyMultipleCapaHandling() {
         Assert.assertTrue(hasCapaDataOrPageLoaded(), "CAPA page should handle available multiple records");
     }
 
     @Test(priority = 14, description = "Verify CAPA creation")
-    // Test Case No: CAPA_TC014
+    // Manual Test Case ID: TC561
     public void verifyCapaCreation() {
         throw new SkipException("Requires confirmed CAPA create form locators and disposable test data");
     }
 
     @Test(priority = 15, description = "Verify CAPA saved as Draft")
-    // Test Case No: CAPA_TC015
+    // Manual Test Case ID: TC562
     public void verifyCapaSavedAsDraft() {
         throw new SkipException("Requires create CAPA data and draft save business flow");
     }
 
     @Test(priority = 16, description = "Verify CAPA title input")
-    // Test Case No: CAPA_TC016
+    // Manual Test Case ID: TC563
     public void verifyCapaTitleInput() {
         throw new SkipException("Requires confirmed CAPA title field locator");
     }
 
     @Test(priority = 17, description = "Verify category/type selection")
-    // Test Case No: CAPA_TC017
+    // Manual Test Case ID: TC564
     public void verifyCategoryTypeSelection() {
         throw new SkipException("Requires confirmed category/type dropdown locator and option values");
     }
 
     @Test(priority = 18, description = "Verify attachment upload")
-    // Test Case No: CAPA_TC018
+    // Manual Test Case ID: TC565
     public void verifyAttachmentUpload() {
         throw new SkipException("Requires file upload control locator and sample attachment");
     }
 
     @Test(priority = 19, description = "Verify investigation details entry")
-    // Test Case No: CAPA_TC019
+    // Manual Test Case ID: TC566
     public void verifyInvestigationDetailsEntry() {
         throw new SkipException("Requires confirmed investigation details field locator");
     }
 
     @Test(priority = 20, description = "Verify root cause analysis entry")
-    // Test Case No: CAPA_TC020
+    // Manual Test Case ID: TC567
     public void verifyRootCauseAnalysisEntry() {
         throw new SkipException("Requires confirmed root cause field locator");
     }
 
     @Test(priority = 21, description = "Verify investigation data saved")
-    // Test Case No: CAPA_TC021
+    // Manual Test Case ID: TC568
     public void verifyInvestigationDataSaved() {
         throw new SkipException("Requires CAPA record creation and save verification flow");
     }
 
     @Test(priority = 22, description = "Verify corrective action entry")
-    // Test Case No: CAPA_TC022
+    // Manual Test Case ID: TC569
     public void verifyCorrectiveActionEntry() {
         throw new SkipException("Requires confirmed corrective action field locator");
     }
 
     @Test(priority = 23, description = "Verify preventive action entry")
-    // Test Case No: CAPA_TC023
+    // Manual Test Case ID: TC570
     public void verifyPreventiveActionEntry() {
         throw new SkipException("Requires confirmed preventive action field locator");
     }
 
     @Test(priority = 24, description = "Verify responsible person assignment")
-    // Test Case No: CAPA_TC024
+    // Manual Test Case ID: TC571
     public void verifyResponsiblePersonAssignment() {
         throw new SkipException("Requires confirmed user assignment control and test user");
     }
 
     @Test(priority = 25, description = "Verify due date assignment")
-    // Test Case No: CAPA_TC025
+    // Manual Test Case ID: TC572
     public void verifyDueDateAssignment() {
         throw new SkipException("Requires confirmed date picker locator");
     }
 
     @Test(priority = 26, description = "Verify send for review")
-    // Test Case No: CAPA_TC026
+    // Manual Test Case ID: TC573
     public void verifySendForReview() {
         throw new SkipException("Requires draft CAPA record and reviewer setup");
     }
 
     @Test(priority = 27, description = "Verify reviewer assignment")
-    // Test Case No: CAPA_TC027
+    // Manual Test Case ID: TC574
     public void verifyReviewerAssignment() {
         throw new SkipException("Requires reviewer user data and assignment locator");
     }
 
     @Test(priority = 28, description = "Verify approver assignment")
-    // Test Case No: CAPA_TC028
+    // Manual Test Case ID: TC575
     public void verifyApproverAssignment() {
         throw new SkipException("Requires approver user data and assignment locator");
     }
 
     @Test(priority = 29, description = "Verify reviewer access")
-    // Test Case No: CAPA_TC029
+    // Manual Test Case ID: TC576
     public void verifyReviewerAccess() {
         throw new SkipException("Requires reviewer credentials");
     }
 
     @Test(priority = 30, description = "Verify reviewer edit")
-    // Test Case No: CAPA_TC030
+    // Manual Test Case ID: TC577
     public void verifyReviewerEdit() {
         throw new SkipException("Requires reviewer credentials and editable review-stage CAPA");
     }
 
     @Test(priority = 31, description = "Verify reviewer review")
-    // Test Case No: CAPA_TC031
+    // Manual Test Case ID: TC578
     public void verifyReviewerReview() {
         throw new SkipException("Requires reviewer credentials and review-stage CAPA");
     }
 
     @Test(priority = 32, description = "Verify approver access")
-    // Test Case No: CAPA_TC032
+    // Manual Test Case ID: TC579
     public void verifyApproverAccess() {
         throw new SkipException("Requires approver credentials");
     }
 
     @Test(priority = 33, description = "Verify approver approval")
-    // Test Case No: CAPA_TC033
+    // Manual Test Case ID: TC580
     public void verifyApproverApproval() {
         throw new SkipException("Requires approver credentials and approval-stage CAPA");
     }
 
     @Test(priority = 34, description = "Verify Approved status")
-    // Test Case No: CAPA_TC034
+    // Manual Test Case ID: TC581
     public void verifyApprovedStatus() {
         throw new SkipException("Requires approved CAPA test record");
     }
 
     @Test(priority = 35, description = "Verify verification step")
-    // Test Case No: CAPA_TC035
+    // Manual Test Case ID: TC582
     public void verifyVerificationStep() {
         throw new SkipException("Requires approved CAPA ready for verification");
     }
 
     @Test(priority = 36, description = "Verify verification remarks")
-    // Test Case No: CAPA_TC036
+    // Manual Test Case ID: TC583
     public void verifyVerificationRemarks() {
         throw new SkipException("Requires verification-stage CAPA and remarks field locator");
     }
 
     @Test(priority = 37, description = "Verify effectiveness evaluation")
-    // Test Case No: CAPA_TC037
+    // Manual Test Case ID: TC584
     public void verifyEffectivenessEvaluation() {
         throw new SkipException("Requires CAPA ready for effectiveness evaluation");
     }
 
     @Test(priority = 38, description = "Verify CAPA closure")
-    // Test Case No: CAPA_TC038
+    // Manual Test Case ID: TC585
     public void verifyCapaClosure() {
         throw new SkipException("Requires CAPA ready for closure");
     }
 
     @Test(priority = 39, description = "Verify restricted access for Assignee")
-    // Test Case No: CAPA_TC039
+    // Manual Test Case ID: TC586
     public void verifyRestrictedAccessForAssignee() {
         throw new SkipException("Requires assignee credentials");
     }
 
     @Test(priority = 40, description = "Verify Assignee restriction")
-    // Test Case No: CAPA_TC040
+    // Manual Test Case ID: TC587
     public void verifyAssigneeRestriction() {
         throw new SkipException("Requires assignee credentials and restriction rules");
     }
 
     @Test(priority = 41, description = "Verify role-based actions")
-    // Test Case No: CAPA_TC041
+    // Manual Test Case ID: TC588
     public void verifyRoleBasedActions() {
         throw new SkipException("Requires admin, reviewer, approver, and assignee credentials");
     }
 
     @Test(priority = 42, description = "Verify data saved correctly")
-    // Test Case No: CAPA_TC042
+    // Manual Test Case ID: TC589
     public void verifyDataSavedCorrectly() {
         throw new SkipException("Requires CAPA creation/update flow with unique test data");
     }
