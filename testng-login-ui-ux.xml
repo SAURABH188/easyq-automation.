@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="easyQ Login UI UX Automation">
+    <listeners>
+        <listener class-name="utils.TestListener"/>
+    </listeners>
+    <test name="Login UI UX Tests">
+        <classes>
+            <class name="tests.EasyQLoginUiUxComprehensiveTest"/>
+        </classes>
+    </test>
+</suite>

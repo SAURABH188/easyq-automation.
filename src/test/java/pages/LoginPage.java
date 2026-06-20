@@ -5,6 +5,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import utils.ActionHelper;
 import utils.WaitHelper;
 
 import java.time.Duration;
@@ -12,6 +13,7 @@ import java.time.Duration;
 public class LoginPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
+    private final ActionHelper action;
     private final WaitHelper waitHelper;
 
     private final By emailField = By.xpath("//input[@type='email' or contains(@placeholder,'Email') or contains(@placeholder,'email') or contains(@formcontrolname,'email')]");
@@ -21,6 +23,7 @@ public class LoginPage {
     public LoginPage(WebDriver driver, int explicitWaitSeconds) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(explicitWaitSeconds));
+        this.action = new ActionHelper(driver, explicitWaitSeconds);
         this.waitHelper = new WaitHelper(driver, explicitWaitSeconds);
     }
 
@@ -29,15 +32,9 @@ public class LoginPage {
     }
 
     public void login(String email, String password) {
-        WebElement emailInput = wait.until(ExpectedConditions.visibilityOfElementLocated(emailField));
-        emailInput.clear();
-        emailInput.sendKeys(email);
-
-        WebElement passwordInput = wait.until(ExpectedConditions.visibilityOfElementLocated(passwordField));
-        passwordInput.clear();
-        passwordInput.sendKeys(password);
-
-        wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        action.clearAndType(emailField, email);
+        action.clearAndType(passwordField, password);
+        action.click(loginButton);
         waitHelper.waitForAppToLoad();
     }
 }

@@ -1,4 +1,4 @@
-package tests;
+﻿package tests;
 
 import base.BaseTest;
 import org.openqa.selenium.By;
@@ -15,6 +15,7 @@ public class LoginTest extends BaseTest {
     private final By dashboardHeading = By.xpath("//*[contains(normalize-space(.),'Dashboard')]");
 
     @Test
+    // Test Case No: SMOKE_TC001
     public void userCanOpenLoginPage() {
         LoginPage loginPage = new LoginPage(driver, config.getInt("explicitWait"));
 
@@ -22,6 +23,7 @@ public class LoginTest extends BaseTest {
     }
 
     @Test
+    // Test Case No: SMOKE_TC002
     public void validUserCanLogin() {
         LoginPage loginPage = new LoginPage(driver, config.getInt("explicitWait"));
 

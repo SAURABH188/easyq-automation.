@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="easyQ Quality Policy Tests">
+    <listeners>
+        <listener class-name="utils.TestListener"/>
+    </listeners>
+    <test name="Quality Policy Tests">
+        <classes>
+            <class name="tests.EasyQQualityPolicyTest"/>
+        </classes>
+    </test>
+</suite>

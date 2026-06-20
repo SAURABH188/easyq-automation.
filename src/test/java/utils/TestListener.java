@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 
 public class TestListener implements ITestListener {
 
@@ -21,6 +22,9 @@ public class TestListener implements ITestListener {
     public void onTestFailure(ITestResult result) {
         System.out.println();
         System.out.println("FAILED TEST: " + result.getMethod().getMethodName());
+        if (result.getParameters() != null && result.getParameters().length > 0) {
+            System.out.println("TEST DATA: " + Arrays.toString(result.getParameters()));
+        }
         System.out.println("FAILURE REASON: " + result.getThrowable());
 
         WebDriver driver = getDriver(result);

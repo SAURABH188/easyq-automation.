@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="easyQ CAPA Tests">
+    <listeners>
+        <listener class-name="utils.TestListener"/>
+    </listeners>
+    <test name="CAPA Tests">
+        <classes>
+            <class name="tests.EasyQCapaTest"/>
+        </classes>
+    </test>
+</suite>

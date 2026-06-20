@@ -8,14 +8,8 @@ public class ConfigReader {
     private final Properties properties = new Properties();
 
     public ConfigReader() {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("config.properties")) {
-            if (inputStream == null) {
-                throw new IllegalStateException("config.properties file not found");
-            }
-            properties.load(inputStream);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to load config.properties", exception);
-        }
+        loadRequiredProperties("config.properties");
+        loadOptionalProperties("secrets.local.properties");
     }
 
     public String get(String key) {
@@ -31,6 +25,14 @@ public class ConfigReader {
     }
 
     public String getRequiredSecret(String environmentVariableName) {
+        String value = getOptionalSecret(environmentVariableName);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(environmentVariableName + " environment variable is required");
+        }
+        return value;
+    }
+
+    public String getOptionalSecret(String environmentVariableName) {
         String value = System.getProperty(environmentVariableName);
         if (value == null || value.isBlank()) {
             value = System.getenv(environmentVariableName);
@@ -38,9 +40,27 @@ public class ConfigReader {
         if (value == null || value.isBlank()) {
             value = properties.getProperty(environmentVariableName);
         }
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(environmentVariableName + " environment variable is required");
-        }
         return value;
+    }
+
+    private void loadRequiredProperties(String fileName) {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName)) {
+            if (inputStream == null) {
+                throw new IllegalStateException(fileName + " file not found");
+            }
+            properties.load(inputStream);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to load " + fileName, exception);
+        }
+    }
+
+    private void loadOptionalProperties(String fileName) {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName)) {
+            if (inputStream != null) {
+                properties.load(inputStream);
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to load " + fileName, exception);
+        }
     }
 }

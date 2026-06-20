@@ -1,4 +1,4 @@
-package tests;
+﻿package tests;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.By;
@@ -56,6 +56,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 1)
+    // Test Case No: HOME_TC001
     public void dashboardDisplay() {
         WebElement dashboard = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Dashboard')]")
@@ -65,6 +66,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 2)
+    // Test Case No: HOME_TC002
     public void qualityPolicyCardDisplay() {
         WebElement qualityPolicy = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Quality Policy')]")
@@ -74,6 +76,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 3)
+    // Test Case No: HOME_TC003
     public void qualityObjectiveCardDisplay() {
         WebElement qualityObjective = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Quality Objective')]")
@@ -83,6 +86,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 4)
+    // Test Case No: HOME_TC004
     public void documentsCardDisplay() {
         WebElement documents = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Documents')]")
@@ -92,6 +96,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 5)
+    // Test Case No: HOME_TC005
     public void capaAndDeviationCardDisplay() {
         WebElement capaAndDeviation = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'CAPA')]")
@@ -101,6 +106,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 6)
+    // Test Case No: HOME_TC006
     public void trainingCardDisplay() {
         WebElement training = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Training')]")
@@ -110,6 +116,7 @@ public class EasyQHomepage {
     }
 
     @Test(priority = 7)
+    // Test Case No: HOME_TC007
     public void productsCardDisplay() {
         WebElement products = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.xpath("//*[contains(normalize-space(.),'Products')]")
