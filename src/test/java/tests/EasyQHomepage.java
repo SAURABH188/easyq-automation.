@@ -1,4 +1,4 @@
-﻿package tests;
+package tests;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.By;
@@ -11,12 +11,14 @@ import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import utils.ConfigReader;
 
 import java.time.Duration;
 
 public class EasyQHomepage {
     private WebDriver driver;
     private WebDriverWait wait;
+    private final ConfigReader config = new ConfigReader();
     private final String baseUrl = "https://beta.easyqsolutions.com/#/easyqsolutions/login";
     private final String email = "varunt@easyqsolutions.com";
 
@@ -40,7 +42,7 @@ public class EasyQHomepage {
         ));
 
         emailField.sendKeys(email);
-        passwordField.sendKeys(System.getenv("EASYQ_PASSWORD"));
+        passwordField.sendKeys(getPassword());
         loginButton.click();
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(
@@ -123,5 +125,16 @@ public class EasyQHomepage {
         ));
 
         Assert.assertTrue(products.isDisplayed(), "Products should be displayed");
+    }
+
+    private String getPassword() {
+        String password = config.getOptionalSecret("EASYQ_ADMIN_PASSWORD");
+        if (password == null || password.isBlank()) {
+            password = config.getOptionalSecret("EASYQ_PASSWORD");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("EASYQ_ADMIN_PASSWORD or EASYQ_PASSWORD is required");
+        }
+        return password;
     }
 }

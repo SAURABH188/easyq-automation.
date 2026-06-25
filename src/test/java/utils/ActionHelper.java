@@ -24,7 +24,8 @@ public class ActionHelper {
         this.waitHelper = new WaitHelper(driver, timeoutSeconds);
 
         ConfigReader config = new ConfigReader();
-        this.actionDelayMs = parseInt(config.get("actionDelayMs"), 600);
+        String visualDelay = config.getOptionalSecret("EASYQ_VISUAL_DELAY_MS");
+        this.actionDelayMs = parseInt(visualDelay != null ? visualDelay : config.get("actionDelayMs"), 1200);
         this.highlightActions = Boolean.parseBoolean(String.valueOf(config.get("highlightActions")));
     }
 

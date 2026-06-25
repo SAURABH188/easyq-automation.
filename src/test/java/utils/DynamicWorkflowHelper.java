@@ -200,14 +200,18 @@ public final class DynamicWorkflowHelper {
     }
 
     private static void pauseForObservation() {
-        int delayMs = 600;
+        int delayMs = 1200;
         try {
-            String configuredDelay = new ConfigReader().get("actionDelayMs");
+            ConfigReader config = new ConfigReader();
+            String configuredDelay = config.getOptionalSecret("EASYQ_VISUAL_DELAY_MS");
+            if (configuredDelay == null || configuredDelay.isBlank()) {
+                configuredDelay = config.get("actionDelayMs");
+            }
             if (configuredDelay != null && !configuredDelay.isBlank()) {
                 delayMs = Integer.parseInt(configuredDelay);
             }
         } catch (RuntimeException ignored) {
-            delayMs = 600;
+            delayMs = 1200;
         }
         if (delayMs <= 0) {
             return;

@@ -1,4 +1,4 @@
-﻿package tests;
+package tests;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.By;
@@ -12,6 +12,7 @@ import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import utils.ConfigReader;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.List;
 public class EasyQDashboardDetailsTest {
     private WebDriver driver;
     private WebDriverWait wait;
+    private final ConfigReader config = new ConfigReader();
 
     private final String baseUrl = "https://beta.easyqsolutions.com/#/easyqsolutions/login";
     private final String validEmail = "varunt@easyqsolutions.com";
@@ -838,9 +840,12 @@ public class EasyQDashboardDetailsTest {
     }
 
     private String getPassword() {
-        String password = System.getenv("EASYQ_PASSWORD");
+        String password = config.getOptionalSecret("EASYQ_ADMIN_PASSWORD");
         if (password == null || password.isBlank()) {
-            throw new IllegalStateException("EASYQ_PASSWORD environment variable is required");
+            password = config.getOptionalSecret("EASYQ_PASSWORD");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("EASYQ_ADMIN_PASSWORD or EASYQ_PASSWORD is required");
         }
         return password;
     }
