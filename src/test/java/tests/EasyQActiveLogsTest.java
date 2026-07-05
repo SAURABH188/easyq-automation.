@@ -30,7 +30,7 @@ public class EasyQActiveLogsTest {
     private final By emailField = By.xpath("//input[@type='email' or contains(@formcontrolname,'email')]");
     private final By passwordField = By.xpath("//input[@type='password' or contains(@formcontrolname,'password')]");
     private final By loginButton = By.xpath("//button[contains(normalize-space(.),'Log In')]");
-    private final By profileDropdownTrigger = By.xpath("//button[@aria-haspopup='true' or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'account') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'account') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'avatar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'dropdown') or .//*[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'avatar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user')]] | //*[@role='button' and (contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'account') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'avatar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'dropdown'))]");
+    private final By profileDropdownTrigger = By.xpath("//*[self::button or self::a or @role='button' or self::img][not(contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'notification')) and not(contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'bell')) and not(contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'notification')) and not(contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'bell')) and not(contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'notification')) and not(contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'bell')) and (contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'account') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'account') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'avatar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user') or contains(translate(@alt,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'easyq') or contains(translate(@src,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'logo') or .//*[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'profile') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'avatar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user') or contains(translate(@alt,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'easyq') or contains(translate(@src,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'logo')])]");
     private final By activeLogsMenu = By.xpath("//*[self::a or self::button or @role='button' or @role='link' or @role='menuitem' or contains(@class,'menu') or contains(@class,'nav') or contains(@class,'sidebar') or contains(@class,'item')][contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'active logs') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'activity logs') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'activity log') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'audit log') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'logs')]");
     private final By activeLogsTitle = By.xpath("//*[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'active logs') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'activity logs') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'activity log') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'audit log')]");
     private final By todayLabel = By.xpath("//*[contains(normalize-space(.),'Today')]");
@@ -409,13 +409,10 @@ public class EasyQActiveLogsTest {
     }
 
     private boolean openProfileDropdown() {
-        Reporter.log("NAV STEP: Clicking top-right easyQ/profile logo.", true);
-        if (clickTopRightProfileArea()) {
-            return true;
-        }
+        closeTransientOverlay();
 
         Reporter.log("NAV STEP: Trying profile dropdown locator.", true);
-        if (clickIfClickable(profileDropdownTrigger, 1)) {
+        if (clickIfClickable(profileDropdownTrigger, 2) && isProfileMenuVisible()) {
             return true;
         }
 
@@ -435,7 +432,7 @@ public class EasyQActiveLogsTest {
             WebElement trigger = (WebElement) ((JavascriptExecutor) driver).executeScript(
                     "const vw = window.innerWidth;"
                             + "const vh = window.innerHeight;"
-                            + "const elements = Array.from(document.querySelectorAll('button,a,[role=\"button\"],img,svg,mat-icon,.profile,.avatar,.dropdown,.dropdown-toggle,.user'));"
+                            + "const elements = Array.from(document.querySelectorAll('button,a,[role=\"button\"],img,.profile,.avatar,.dropdown,.dropdown-toggle,.user'));"
                             + "const visible = elements.filter(el => {"
                             + "  const rect = el.getBoundingClientRect();"
                             + "  const style = window.getComputedStyle(el);"
@@ -443,8 +440,9 @@ public class EasyQActiveLogsTest {
                             + "  if (rect.width < 8 || rect.height < 8) return false;"
                             + "  if (rect.left < vw * 0.55 || rect.top > Math.max(150, vh * 0.35)) return false;"
                             + "  const label = [el.innerText, el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('class'), el.id, el.getAttribute('alt')].join(' ').toLowerCase();"
+                            + "  if (/notification|bell|alarm|reminder/.test(label)) return false;"
                             + "  return /profile|account|avatar|dropdown|user|admin|varun|vt/.test(label)"
-                            + "    || ['img','svg','mat-icon'].includes(el.tagName.toLowerCase());"
+                            + "    || el.tagName.toLowerCase() === 'img';"
                             + "});"
                             + "visible.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right || a.getBoundingClientRect().top - b.getBoundingClientRect().top);"
                             + "return visible[0] || null;");
@@ -482,6 +480,7 @@ public class EasyQActiveLogsTest {
                             + "  const label = labelOf(el);"
                             + "  const lower = label.toLowerCase();"
                             + "  let score = 0;"
+                            + "  if (/notification|bell|alarm|reminder/.test(lower)) score -= 500;"
                             + "  if (/profile|account|avatar|user|admin|varun/.test(lower)) score += 120;"
                             + "  if (/\\b[A-Z]{1,3}\\b/.test(label)) score += 100;"
                             + "  if (/\\bVT\\b|\\bV\\b/.test(label)) score += 90;"
@@ -516,8 +515,8 @@ public class EasyQActiveLogsTest {
     }
 
     private boolean clickTopRightProfileArea() {
-        int[] xOffsetsFromRight = {45, 55, 75};
-        int[] yOffsetsFromTop = {40, 55};
+        int[] xOffsetsFromRight = {28, 38, 48};
+        int[] yOffsetsFromTop = {40, 55, 72};
 
         for (int yOffset : yOffsetsFromTop) {
             for (int xOffset : xOffsetsFromRight) {
@@ -528,7 +527,8 @@ public class EasyQActiveLogsTest {
                                     + "const el = document.elementFromPoint(x, y);"
                                     + "if (!el) return null;"
                                     + "const target = el.closest('button,a,[role=\"button\"],.dropdown,.dropdown-toggle,.profile,.avatar,.user') || el;"
-                                    + "const label = [target.innerText, target.textContent, target.getAttribute('aria-label'), target.getAttribute('title'), target.getAttribute('class'), target.id].join(' ').replace(/\\s+/g, ' ').trim();"
+                                    + "const label = [target.innerText, target.textContent, target.getAttribute('aria-label'), target.getAttribute('title'), target.getAttribute('class'), target.id, target.getAttribute('alt')].join(' ').replace(/\\s+/g, ' ').trim();"
+                                    + "if (/notification|bell|alarm|reminder/i.test(label)) return null;"
                                     + "target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window }));"
                                     + "target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));"
                                     + "target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));"
@@ -539,7 +539,7 @@ public class EasyQActiveLogsTest {
                     if (clicked != null) {
                         Reporter.log("Clicked top-right profile area candidate: " + clicked, true);
                         waitForSmallDelay();
-                        if (isProfileMenuVisible() || hasAnyVisibleOverlayMenu()) {
+                        if (isProfileMenuVisible()) {
                             return true;
                         }
                         closeTransientOverlay();

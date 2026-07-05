@@ -13,6 +13,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import utils.ConfigReader;
+import utils.HamburgerNavigationHelper;
 
 import java.time.Duration;
 
@@ -375,9 +376,8 @@ public class EasyQComplaintManagementTest {
     }
 
     private void navigateToComplaintManagement() {
-        WebElement menu = wait.until(ExpectedConditions.elementToBeClickable(complaintMenu));
-        menu.click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(complaintTitle));
+        HamburgerNavigationHelper.openModule(driver, wait, complaintTitle, "Complaint Management",
+                "complaint\\s*management|complaints?");
     }
 
     private void openComplaintFormIfAvailable() {
@@ -417,7 +417,7 @@ public class EasyQComplaintManagementTest {
 
     private void waitForSmallDelay() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(1500);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }

@@ -14,6 +14,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import utils.ConfigReader;
+import utils.HamburgerNavigationHelper;
 
 import java.time.Duration;
 
@@ -339,9 +340,7 @@ public class EasyQCapaTest {
     }
 
     private void navigateToCapa() {
-        WebElement menu = wait.until(ExpectedConditions.elementToBeClickable(capaMenu));
-        menu.click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(capaTitle));
+        HamburgerNavigationHelper.openModule(driver, wait, capaTitle, "CAPA", "capa|deviation");
     }
 
     private void openCreateCapaIfAvailable() {
@@ -391,7 +390,7 @@ public class EasyQCapaTest {
 
     private void waitForSmallDelay() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(1500);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }

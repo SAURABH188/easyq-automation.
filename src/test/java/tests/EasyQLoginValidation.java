@@ -42,11 +42,14 @@ public class EasyQLoginValidation {
     public void setUp() {
         WebDriverManager.chromedriver().setup();
         driver = new ChromeDriver();
-        wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        wait = new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait")));
 
         driver.manage().window().maximize();
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(90));
+        driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(45));
         driver.get(baseUrl);
         wait.until(ExpectedConditions.visibilityOfElementLocated(emailField));
+        waitForSmallDelay();
     }
 
     @AfterMethod
@@ -67,6 +70,7 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC002
     public void verifyLoginPageLoadsOnRefresh() {
         driver.navigate().refresh();
+        waitForSmallDelay();
 
         Assert.assertTrue(wait.until(ExpectedConditions.visibilityOfElementLocated(emailField)).isDisplayed(),
                 "Login page should reload without errors");
@@ -93,10 +97,12 @@ public class EasyQLoginValidation {
     public void verifyPasswordMaskingAndVisibilityToggle() {
         WebElement passwordInput = driver.findElement(passwordField);
         passwordInput.sendKeys("Test@123");
+        waitForSmallDelay();
 
         Assert.assertEquals(passwordInput.getAttribute("type"), "password", "Password should be masked by default");
 
         driver.findElement(eyeIcon).click();
+        waitForSmallDelay();
 
         boolean passwordVisible = wait.until(ExpectedConditions.or(
                 ExpectedConditions.attributeToBe(passwordField, "type", "text"),
@@ -116,6 +122,7 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC023, TC041, TC068
     public void verifyForgotPasswordNavigation() {
         driver.findElement(forgotPasswordLink).click();
+        waitForSmallDelay();
 
         boolean forgotPasswordPageVisible = wait.until(ExpectedConditions.or(
                 ExpectedConditions.urlContains("forgot"),
@@ -137,6 +144,7 @@ public class EasyQLoginValidation {
         WebElement emailInput = driver.findElement(emailField);
         emailInput.clear();
         emailInput.sendKeys(validEmail);
+        waitForSmallDelay();
 
         Assert.assertEquals(emailInput.getAttribute("value"), validEmail, "Email field should accept valid email input");
     }
@@ -147,6 +155,7 @@ public class EasyQLoginValidation {
         WebElement passwordInput = driver.findElement(passwordField);
         passwordInput.clear();
         passwordInput.sendKeys("Test@123");
+        waitForSmallDelay();
 
         Assert.assertFalse(passwordInput.getAttribute("value").isEmpty(), "Password field should accept input");
     }
@@ -155,6 +164,7 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC028, TC034, TC038, TC056, TC064
     public void verifyMandatoryValidationForEmptyFields() {
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Validation should appear or user should remain on login page");
     }
@@ -163,7 +173,9 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC065
     public void verifyLoginWithOnlyEmail() {
         driver.findElement(emailField).sendKeys(validEmail);
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Password validation should appear");
     }
@@ -172,7 +184,9 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC066
     public void verifyLoginWithOnlyPassword() {
         driver.findElement(passwordField).sendKeys(getPassword());
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Email validation should appear");
     }
@@ -181,8 +195,11 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC037, TC062
     public void verifyLoginWithInvalidPassword() {
         driver.findElement(emailField).sendKeys(validEmail);
+        waitForSmallDelay();
         driver.findElement(passwordField).sendKeys(invalidPassword);
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Invalid password should not allow login");
     }
@@ -191,8 +208,11 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC063
     public void verifyLoginWithInvalidEmail() {
         driver.findElement(emailField).sendKeys(invalidEmail);
+        waitForSmallDelay();
         driver.findElement(passwordField).sendKeys(getPassword());
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
 
         Assert.assertTrue(validationDisplayedOrLoginRemains(), "Invalid email should not allow login");
     }
@@ -209,8 +229,11 @@ public class EasyQLoginValidation {
     // Manual Test Case ID: TC040, TC067
     public void verifyLoginUsingEnterKey() {
         driver.findElement(emailField).sendKeys(validEmail);
+        waitForSmallDelay();
         driver.findElement(passwordField).sendKeys(getPassword());
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).sendKeys(Keys.ENTER);
+        waitForSmallDelay();
 
         Assert.assertTrue(waitUntilLoginPageIsLeft(), "Dashboard should be visible after pressing Enter");
     }
@@ -231,6 +254,7 @@ public class EasyQLoginValidation {
         Assert.assertTrue(waitUntilLoginPageIsLeft(), "Dashboard should be displayed after login");
 
         driver.navigate().back();
+        waitForSmallDelay();
 
         boolean loginPageNotExposed = wait.until(currentDriver ->
                 !currentDriver.getCurrentUrl().contains("/login") || !isElementDisplayed(loginButton)
@@ -241,8 +265,11 @@ public class EasyQLoginValidation {
 
     private void loginWithValidCredentials() {
         driver.findElement(emailField).sendKeys(validEmail);
+        waitForSmallDelay();
         driver.findElement(passwordField).sendKeys(getPassword());
+        waitForSmallDelay();
         wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
+        waitForSmallDelay();
     }
 
     private boolean waitUntilLoginPageIsLeft() {
@@ -283,6 +310,30 @@ public class EasyQLoginValidation {
             return driver.findElement(locator).isDisplayed();
         } catch (RuntimeException exception) {
             return false;
+        }
+    }
+
+    private void waitForSmallDelay() {
+        int delayMs = 1200;
+        String configuredDelay = config.getOptionalSecret("EASYQ_VISUAL_DELAY_MS");
+        if (configuredDelay == null || configuredDelay.isBlank()) {
+            configuredDelay = config.get("actionDelayMs");
+        }
+        if (configuredDelay != null && !configuredDelay.isBlank()) {
+            try {
+                delayMs = Integer.parseInt(configuredDelay.trim());
+            } catch (NumberFormatException ignored) {
+                delayMs = 1200;
+            }
+        }
+        if (delayMs <= 0) {
+            return;
+        }
+
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
         }
     }
 }

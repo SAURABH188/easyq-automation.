@@ -25,6 +25,8 @@ public class BaseTest {
         driver = createDriver(config.get("browser"));
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(90));
+        driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(45));
         driver.get(config.get("baseUrl"));
         new WaitHelper(driver, config.getInt("explicitWait")).waitForAppToLoad();
     }

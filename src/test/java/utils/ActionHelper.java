@@ -30,12 +30,14 @@ public class ActionHelper {
     }
 
     public WebElement waitForVisible(By locator) {
+        waitHelper.waitForAppToLoad();
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         focus(element);
         return element;
     }
 
     public WebElement waitForClickable(By locator) {
+        waitHelper.waitForAppToLoad();
         WebElement element = wait.until(ExpectedConditions.elementToBeClickable(locator));
         focus(element);
         return element;
@@ -43,7 +45,11 @@ public class ActionHelper {
 
     public void click(By locator) {
         WebElement element = waitForClickable(locator);
-        element.click();
+        try {
+            element.click();
+        } catch (RuntimeException exception) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+        }
         afterAction();
     }
 

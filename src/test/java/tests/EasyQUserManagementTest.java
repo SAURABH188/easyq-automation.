@@ -5,12 +5,16 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.IHookCallBack;
+import org.testng.IHookable;
 import org.testng.Assert;
+import org.testng.ITestResult;
 import org.testng.Reporter;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -21,9 +25,10 @@ import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class EasyQUserManagementTest {
+public class EasyQUserManagementTest implements IHookable {
     private WebDriver driver;
     private WebDriverWait wait;
+    private RuntimeException setupFailure;
     private final ConfigReader config = new ConfigReader();
 
     private final String baseUrl = "https://beta.easyqsolutions.com/#/easyqsolutions/login";
@@ -31,7 +36,7 @@ public class EasyQUserManagementTest {
 
     private final By emailField = By.xpath("//input[@type='email' or contains(@formcontrolname,'email')]");
     private final By passwordField = By.xpath("//input[@type='password' or contains(@formcontrolname,'password')]");
-    private final By loginButton = By.xpath("//button[contains(normalize-space(.),'Log In')]");
+    private final By loginButton = By.xpath("//button[contains(normalize-space(.),'Log In') or contains(normalize-space(.),'Login') or contains(normalize-space(.),'Sign In') or contains(normalize-space(.),'Sign in') or @type='submit']");
     private final By dashboardText = By.xpath("//*[contains(normalize-space(.),'Dashboard')]");
     private final By userManagementMenu = By.xpath("//*[self::a or self::button or @role='link' or @role='button' or @role='menuitem'][contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user management') or normalize-space(.)='Users' or contains(translate(@href,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user-management') or contains(translate(@href,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'users') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user management') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user management')]");
     private final By userManagementTitle = By.xpath("//*[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'user management')]");
@@ -67,23 +72,35 @@ public class EasyQUserManagementTest {
     private final By submitButton = By.xpath("//button[not(@disabled) and (contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'submit') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'save') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'create') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'update') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'edit user'))]");
     private final By validationMessage = By.xpath("//*[contains(@class,'error') or contains(@class,'invalid') or contains(@class,'danger') or contains(normalize-space(.),'required') or contains(normalize-space(.),'Required') or contains(normalize-space(.),'Invalid')]");
 
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() {
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        setupFailure = null;
+        safeQuitDriver();
 
-        driver.manage().window().maximize();
-        driver.get(baseUrl);
-        loginWithValidCredentials();
-        navigateToUserManagement();
+        try {
+            startBrowserSession();
+            openBaseUrlWithRetry();
+            loginWithValidCredentials();
+            navigateToUserManagement();
+        } catch (RuntimeException exception) {
+            setupFailure = exception;
+            Reporter.log("SETUP FAILED: " + shortError(exception), true);
+            safeQuitDriver();
+        }
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void teardown() {
-        if (driver != null) {
-            driver.quit();
+        safeQuitDriver();
+    }
+
+    @Override
+    public void run(IHookCallBack callBack, ITestResult testResult) {
+        if (setupFailure != null) {
+            Assert.fail("Setup failed before this test. Test is marked failed instead of skipped. Reason: "
+                    + shortError(setupFailure), setupFailure);
         }
+        callBack.runTestMethod(testResult);
     }
 
     @Test(priority = 1, description = "Verify User Management page loads successfully")
@@ -655,9 +672,7 @@ public class EasyQUserManagementTest {
     // Manual Test Case ID: TC279-TC332
     public void verifyPdfFlowCreatedUsersCanLoginAfterAdminSetup() {
         ensureDisposableUserExists();
-        loginAs(testUserEmail(), testUserPassword());
-
-        boolean loginSucceeded = waitUntilLoginPageIsLeft();
+        boolean loginSucceeded = loginAsDisposableUserWithRecovery();
         if (!loginSucceeded) {
             Reporter.log("Created disposable user did not leave login page. This usually means email activation or password setup is required. Visible text: "
                     + shortBodyText(), true);
@@ -678,16 +693,74 @@ public class EasyQUserManagementTest {
     }
 
     private void loginWithValidCredentials() {
-        wait.until(ExpectedConditions.visibilityOfElementLocated(emailField)).sendKeys(validEmail);
-        driver.findElement(passwordField).sendKeys(getPassword());
-        wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
-        wait.until(ExpectedConditions.or(
-                ExpectedConditions.visibilityOfElementLocated(dashboardText),
-                ExpectedConditions.not(ExpectedConditions.urlContains("/login"))
-        ));
+        String password = getPassword();
+        RuntimeException lastFailure = null;
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            Reporter.log("LOGIN STEP: Signing in as " + validEmail + ". Attempt " + attempt + " of 3", true);
+            if (attempt > 1) {
+                resetLoginPageForRetry();
+            }
+
+            performLogin(validEmail, password);
+            if (waitUntilLoginPageIsLeft()) {
+                Reporter.log("LOGIN STEP: Login completed. Current URL: " + currentUrlOrUnavailable(), true);
+                return;
+            }
+
+            lastFailure = new IllegalStateException("Admin login attempt " + attempt
+                    + " did not leave the login page. Current URL: " + currentUrlOrUnavailable()
+                    + ". Visible login text: " + shortBodyText());
+            Reporter.log("LOGIN STEP: " + shortError(lastFailure), true);
+            waitForSmallDelay();
+        }
+
+        throw new IllegalStateException("Admin login did not leave the login page after 3 attempts. "
+                + "Please verify EASYQ_ADMIN_PASSWORD or EASYQ_PASSWORD for " + validEmail
+                + ". Current URL: " + currentUrlOrUnavailable()
+                + ". Visible login text: " + shortBodyText(), lastFailure);
+    }
+
+    private void openBaseUrlWithRetry() {
+        WebDriverException lastException = null;
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                Reporter.log("SETUP STEP: Opening EasyQ beta login page. Attempt " + attempt + " of 3", true);
+                driver.get(baseUrl);
+                wait.until(ExpectedConditions.visibilityOfElementLocated(emailField));
+                return;
+            } catch (WebDriverException exception) {
+                lastException = exception;
+                Reporter.log("SETUP STEP: Beta URL did not load on attempt " + attempt + ". Reason: "
+                        + shortError(exception), true);
+                if (isBrowserSessionLost(exception)) {
+                    Reporter.log("SETUP STEP: Browser session was lost. Restarting Chrome before retry.", true);
+                    startBrowserSession();
+                }
+                waitForSmallDelay();
+            }
+        }
+
+        throw new IllegalStateException("EasyQ beta URL could not be opened after 3 attempts. "
+                + "This is usually a network/DNS/VPN issue. Please open "
+                + baseUrl + " manually in Chrome and confirm the page loads. Last error: "
+                + shortError(lastException), lastException);
+    }
+
+    private void startBrowserSession() {
+        safeQuitDriver();
+        WebDriverManager.chromedriver().setup();
+        driver = new ChromeDriver();
+        wait = new WebDriverWait(driver, Duration.ofSeconds(45));
+        driver.manage().window().maximize();
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(90));
+        driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(45));
     }
 
     private void navigateToUserManagement() {
+        ensureBrowserReadyForUserManagementNavigation();
+
         wait.until(ExpectedConditions.or(
                 ExpectedConditions.visibilityOfElementLocated(dashboardText),
                 ExpectedConditions.not(ExpectedConditions.urlContains("/login"))
@@ -715,7 +788,7 @@ public class EasyQUserManagementTest {
         }
 
         Assert.fail("User Management menu/route was not available for the logged-in user. Current URL: "
-                + driver.getCurrentUrl() + ". Visible page text: " + shortBodyText());
+                + currentUrlOrUnavailable() + ". Visible page text: " + shortBodyText());
     }
 
     private boolean openUserManagementHashRoute() {
@@ -1351,19 +1424,86 @@ public class EasyQUserManagementTest {
     }
 
     private void loginAs(String username, String password) {
-        driver.manage().deleteAllCookies();
-        driver.get(baseUrl);
+        try {
+            driver.manage().deleteAllCookies();
+        } catch (RuntimeException exception) {
+            Reporter.log("LOGIN STEP: Could not clear cookies before login. Continuing with fresh navigation. Reason: "
+                    + shortError(exception), true);
+        }
+        openBaseUrlWithRetry();
         try {
             ((JavascriptExecutor) driver).executeScript("window.localStorage.clear(); window.sessionStorage.clear();");
         } catch (RuntimeException ignored) {
             // Some browsers block storage access during navigation; the next login attempt still validates the account.
         }
-        driver.get(baseUrl);
+        openBaseUrlWithRetry();
 
+        performLogin(username, password);
+    }
+
+    private boolean loginAsDisposableUserWithRecovery() {
+        RuntimeException lastFailure = null;
+
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+                Reporter.log("LOGIN STEP: Checking disposable user login. Attempt " + attempt + " of 2", true);
+                loginAs(testUserEmail(), testUserPassword());
+                boolean loginSucceeded = waitUntilLoginPageIsLeft();
+                if (loginSucceeded || isBrowserSessionUsable()) {
+                    return loginSucceeded;
+                }
+                lastFailure = new IllegalStateException("Browser session was not usable after disposable user login attempt.");
+            } catch (RuntimeException exception) {
+                lastFailure = exception;
+            }
+
+            if (lastFailure != null && isBrowserSessionLost(lastFailure)) {
+                Reporter.log("LOGIN STEP: Browser session was lost while checking disposable user login. Restarting Chrome before retry. Reason: "
+                        + shortError(lastFailure), true);
+                startBrowserSession();
+                continue;
+            }
+
+            break;
+        }
+
+        if (lastFailure != null) {
+            Reporter.log("LOGIN STEP: Disposable user login check did not complete cleanly. Reason: "
+                    + shortError(lastFailure), true);
+        }
+        return false;
+    }
+
+    private void performLogin(String username, String password) {
         clearAndType(emailField, username);
-        clearAndType(passwordField, password);
-        wait.until(ExpectedConditions.elementToBeClickable(loginButton)).click();
         waitForSmallDelay();
+        clearAndType(passwordField, password);
+        waitForSmallDelay();
+        WebElement button = wait.until(ExpectedConditions.elementToBeClickable(loginButton));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", button);
+        try {
+            button.click();
+        } catch (RuntimeException exception) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", button);
+        }
+        waitForSmallDelay();
+    }
+
+    private void resetLoginPageForRetry() {
+        try {
+            driver.manage().deleteAllCookies();
+        } catch (RuntimeException exception) {
+            Reporter.log("LOGIN STEP: Cookie cleanup before retry was not available. Reason: "
+                    + shortError(exception), true);
+        }
+
+        try {
+            ((JavascriptExecutor) driver).executeScript("window.localStorage.clear(); window.sessionStorage.clear();");
+        } catch (RuntimeException ignored) {
+            // A clean navigation below is enough when storage access is not available.
+        }
+
+        openBaseUrlWithRetry();
     }
 
     private boolean waitUntilLoginPageIsLeft() {
@@ -1378,11 +1518,17 @@ public class EasyQUserManagementTest {
     }
 
     private boolean isControlledLoginPageState() {
-        String currentUrl = driver.getCurrentUrl().toLowerCase();
-        String bodyText = getBodyText();
-        return (currentUrl.contains("/login") || isElementDisplayed(emailField))
-                && containsAnyIgnoreCase(bodyText, "login", "email", "password", "invalid", "incorrect", "inactive",
-                "unauthorized", "credential", "not active", "disabled");
+        try {
+            String currentUrl = driver.getCurrentUrl().toLowerCase();
+            String bodyText = getBodyText();
+            return (currentUrl.contains("/login") || isElementDisplayed(emailField))
+                    && containsAnyIgnoreCase(bodyText, "login", "email", "password", "invalid", "incorrect", "inactive",
+                    "unauthorized", "credential", "not active", "disabled");
+        } catch (RuntimeException exception) {
+            Reporter.log("LOGIN STEP: Could not inspect login page state because the browser session was unavailable. Reason: "
+                    + shortError(exception), true);
+            return false;
+        }
     }
 
     private void assertUserManagementRestricted(String username, String password) {
@@ -1613,12 +1759,84 @@ public class EasyQUserManagementTest {
     }
 
     private String getBodyText() {
-        return driver.findElement(By.tagName("body")).getText();
+        try {
+            return driver.findElement(By.tagName("body")).getText();
+        } catch (RuntimeException exception) {
+            return "";
+        }
     }
 
     private String shortBodyText() {
         String text = getBodyText().replaceAll("\\s+", " ").trim();
         return text.length() > 300 ? text.substring(0, 300) : text;
+    }
+
+    private String currentUrlOrUnavailable() {
+        try {
+            return driver == null ? "browser-not-started" : driver.getCurrentUrl();
+        } catch (RuntimeException exception) {
+            return "browser-url-unavailable";
+        }
+    }
+
+    private void ensureBrowserReadyForUserManagementNavigation() {
+        if (isBrowserSessionUsable()) {
+            return;
+        }
+
+        Reporter.log("NAV STEP: Browser session was closed or unavailable. Starting a fresh admin session before User Management navigation.", true);
+        startBrowserSession();
+        openBaseUrlWithRetry();
+        loginWithValidCredentials();
+    }
+
+    private boolean isBrowserSessionUsable() {
+        try {
+            if (driver == null) {
+                return false;
+            }
+            driver.getWindowHandles();
+            driver.getCurrentUrl();
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private void safeQuitDriver() {
+        if (driver == null) {
+            return;
+        }
+
+        try {
+            driver.quit();
+        } catch (RuntimeException exception) {
+            Reporter.log("TEARDOWN STEP: Browser was already closed or unavailable. Reason: "
+                    + shortError(exception), true);
+        } finally {
+            driver = null;
+            wait = null;
+        }
+    }
+
+    private boolean isBrowserSessionLost(Throwable throwable) {
+        String message = throwable == null ? "" : String.valueOf(throwable.getMessage()).toLowerCase();
+        return message.contains("no such window")
+                || message.contains("target window already closed")
+                || message.contains("invalid session")
+                || message.contains("session deleted");
+    }
+
+    private String shortError(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            message = throwable.getClass().getSimpleName();
+        }
+        message = message.replaceAll("\\s+", " ").trim();
+        return message.length() > 260 ? message.substring(0, 260) : message;
     }
 
     private void waitForSmallDelay() {

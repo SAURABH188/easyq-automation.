@@ -13,6 +13,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import utils.ConfigReader;
+import utils.HamburgerNavigationHelper;
 
 import java.time.Duration;
 
@@ -369,9 +370,8 @@ public class EasyQDocumentManagementTest {
     }
 
     private void navigateToDocumentManagement() {
-        WebElement menu = wait.until(ExpectedConditions.elementToBeClickable(documentMenu));
-        menu.click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(documentTitle));
+        HamburgerNavigationHelper.openModule(driver, wait, documentTitle, "Document Management",
+                "document\\s*management|documents?");
     }
 
     private void openUploadFormIfAvailable() {
@@ -421,7 +421,7 @@ public class EasyQDocumentManagementTest {
 
     private void waitForSmallDelay() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(1500);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }

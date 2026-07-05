@@ -13,6 +13,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import utils.ConfigReader;
+import utils.HamburgerNavigationHelper;
 
 import java.time.Duration;
 
@@ -690,9 +691,7 @@ public class EasyQTrainingTest {
     }
 
     private void navigateToTraining() {
-        WebElement menu = wait.until(ExpectedConditions.elementToBeClickable(trainingMenu));
-        menu.click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(trainingTitle));
+        HamburgerNavigationHelper.openModule(driver, wait, trainingTitle, "Training", "training");
     }
 
     private void openAssignFormIfAvailable() {
@@ -766,7 +765,7 @@ public class EasyQTrainingTest {
 
     private void waitForSmallDelay() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(1500);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }

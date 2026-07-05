@@ -780,7 +780,7 @@ public class EasyQNotificationsTest {
 
     private void waitForSmallDelay() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(1500);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
