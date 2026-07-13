@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_MULTI_REVIEWER_SINGLE_APPROVER_2026_07_13_AT";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DRAFT_OWNER_SEARCH_2026_07_13_AU";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -794,6 +794,10 @@ public class EasyQQualityPolicyTest {
         }
 
         Reporter.log("WORKFLOW: Dashboard has no pending QP details. Continuing normal Approved/Draft process.", true);
+        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
+            return true;
+        }
+
         navigateToQualityPolicy();
 
         if (openUnderReviewQualityPolicyTask()) {
@@ -918,7 +922,7 @@ public class EasyQQualityPolicyTest {
             return true;
         }
 
-        if (tryOpenInitiatorDraftAndSendForReview()) {
+        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
             return true;
         }
 
@@ -937,20 +941,38 @@ public class EasyQQualityPolicyTest {
         return false;
     }
 
-    private boolean tryOpenInitiatorDraftAndSendForReview() {
-        Reporter.log("WORKFLOW RECOVERY: Checking Varun initiator Draft tab for existing QP draft.", true);
+    private boolean tryOpenDraftAcrossAuthorUsersAndSendForReview() {
+        Reporter.log("WORKFLOW RECOVERY: Dashboard does not show Draft QP details. "
+                + "Checking Admin and Doc Controller Draft tabs.", true);
+        for (WorkflowUser authorCandidate : workflowDraftAuthorCandidates()) {
+            Reporter.log("WORKFLOW RECOVERY: Checking Draft tab under author candidate="
+                    + authorCandidate.roleLabel, true);
+            loginAsConfiguredUser(authorCandidate.username, authorCandidate.password);
+            activeAuthorUser = authorCandidate;
+            activeReviewerUsers.clear();
+            activeReviewer1User = null;
+            activeReviewer2User = null;
+            activeApproverUser = null;
+            workflowParticipantsResolvedFromDocumentInformation = false;
+
+            if (!openDraftOrReturnedQualityPolicyFromDraftTabOnly()) {
+                continue;
+            }
+            Reporter.log("WORKFLOW RECOVERY: Existing QP Draft found under "
+                    + authorCandidate.roleLabel + ". Updating and sending to review.", true);
+            if (!updateCurrentDraftEvaluationFromPdfFlow()) {
+                return false;
+            }
+            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
+            if (submitted) {
+                workflowResumeStage = "REVIEWER1";
+            }
+            return submitted;
+        }
+        Reporter.log("WORKFLOW RECOVERY: No QP Draft found under Admin or Doc Controller accounts.", true);
+        resetDetectedWorkflowParticipants();
         loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
-        if (!openDraftOrReturnedQualityPolicyFromDraftTabOnly()) {
-            return false;
-        }
-        if (!updateCurrentDraftEvaluationFromPdfFlow()) {
-            return false;
-        }
-        boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
-        if (submitted) {
-            workflowResumeStage = "REVIEWER1";
-        }
-        return submitted;
+        return false;
     }
 
     private boolean tryOpenPendingQualityPolicyForStage(String stage) {
@@ -1075,6 +1097,30 @@ public class EasyQQualityPolicyTest {
             }
         }
         return reviewers;
+    }
+
+    private List<WorkflowUser> workflowDraftAuthorCandidates() {
+        List<WorkflowUser> authors = new ArrayList<>();
+        authors.add(new WorkflowUser(
+                configValue("EASYQ_ADMIN_USERNAME", validEmail),
+                getPassword(),
+                configValue("EASYQ_QP_DRAFTER_NAME", "Varun Trivedi"),
+                "varun", "varun trivedi"));
+        authors.add(new WorkflowUser(
+                configValue("EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com"),
+                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                "Pavan Prabhu",
+                "pavan", "pavan prabhu"));
+        return authors;
+    }
+
+    private void resetDetectedWorkflowParticipants() {
+        activeAuthorUser = null;
+        activeReviewer1User = null;
+        activeReviewer2User = null;
+        activeReviewerUsers.clear();
+        activeApproverUser = null;
+        workflowParticipantsResolvedFromDocumentInformation = false;
     }
 
     private WorkflowUser detectPendingQualityPolicyOwnerFromDashboardAllTasks() {
