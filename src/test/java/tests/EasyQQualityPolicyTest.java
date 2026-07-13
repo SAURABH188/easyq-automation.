@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DRAFT_OWNER_SEARCH_2026_07_13_AU";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DOC_CONTROLLER_DRAFT_SEARCH_2026_07_13_AV";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -1106,12 +1106,47 @@ public class EasyQQualityPolicyTest {
                 getPassword(),
                 configValue("EASYQ_QP_DRAFTER_NAME", "Varun Trivedi"),
                 "varun", "varun trivedi"));
-        authors.add(new WorkflowUser(
-                configValue("EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com"),
-                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+        addDraftAuthorCandidateIfPasswordConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_AMITT_USERNAME", "ameetraj001@gmail.com",
+                "EASYQ_DOC_CONTROLLER_AMITT_PASSWORD",
+                "Amitt Demo",
+                "amitt", "amitt demo", "amit demo");
+        addDraftAuthorCandidateIfPasswordConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_ANASUYA_USERNAME", "anasuya@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_ANASUYA_PASSWORD",
+                "Anasuya Roy",
+                "anasuya", "anasuya roy");
+        addDraftAuthorCandidateIfPasswordConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com",
+                "EASYQ_DOC_CONTROLLER_PASSWORD",
                 "Pavan Prabhu",
-                "pavan", "pavan prabhu"));
+                "pavan", "pavan prabhu");
+        addDraftAuthorCandidateIfPasswordConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_USERNAME", "shubham@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_PASSWORD",
+                "Shubham Tiwari",
+                "shubham", "shubham tiwari");
         return authors;
+    }
+
+    private void addDraftAuthorCandidateIfPasswordConfigured(
+            List<WorkflowUser> authors,
+            String usernameKey,
+            String defaultUsername,
+            String passwordKey,
+            String displayName,
+            String... aliases) {
+        String username = configValue(usernameKey, defaultUsername);
+        String password = config.getOptionalSecret(passwordKey);
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            Reporter.log("WORKFLOW RECOVERY: Draft author candidate " + displayName
+                    + " skipped because " + passwordKey + " is not configured.", true);
+            return;
+        }
+        WorkflowUser user = new WorkflowUser(username.trim(), password.trim(), displayName, aliases);
+        if (authors.stream().noneMatch(existing -> sameWorkflowUser(existing, user))) {
+            authors.add(user);
+        }
     }
 
     private void resetDetectedWorkflowParticipants() {
@@ -1450,11 +1485,22 @@ public class EasyQQualityPolicyTest {
                 getPassword(),
                 "Varun Trivedi",
                 "varun", "varun trivedi"));
-        users.add(new WorkflowUser(
-                configValue("EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com"),
-                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                "Pavan Prabhu",
-                "pavan", "pavan prabhu"));
+        addKnownWorkflowUserWithDefaultUsernameIfConfigured(users,
+                "EASYQ_DOC_CONTROLLER_AMITT_USERNAME", "ameetraj001@gmail.com",
+                "EASYQ_DOC_CONTROLLER_AMITT_PASSWORD",
+                "Amitt Demo", "amitt", "amitt demo", "amit demo");
+        addKnownWorkflowUserWithDefaultUsernameIfConfigured(users,
+                "EASYQ_DOC_CONTROLLER_ANASUYA_USERNAME", "anasuya@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_ANASUYA_PASSWORD",
+                "Anasuya Roy", "anasuya", "anasuya roy");
+        addKnownWorkflowUserWithDefaultUsernameIfConfigured(users,
+                "EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com",
+                "EASYQ_DOC_CONTROLLER_PASSWORD",
+                "Pavan Prabhu", "pavan", "pavan prabhu");
+        addKnownWorkflowUserWithDefaultUsernameIfConfigured(users,
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_USERNAME", "shubham@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_PASSWORD",
+                "Shubham Tiwari", "shubham", "shubham tiwari");
         users.add(new WorkflowUser(
                 configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "amit@easyqsolutions.com"),
                 requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
@@ -1491,7 +1537,17 @@ public class EasyQQualityPolicyTest {
             String passwordKey,
             String displayName,
             String... aliases) {
-        String username = config.get(usernameKey);
+        addKnownWorkflowUserWithDefaultUsernameIfConfigured(users, usernameKey, null, passwordKey, displayName, aliases);
+    }
+
+    private void addKnownWorkflowUserWithDefaultUsernameIfConfigured(
+            List<WorkflowUser> users,
+            String usernameKey,
+            String defaultUsername,
+            String passwordKey,
+            String displayName,
+            String... aliases) {
+        String username = defaultUsername == null ? config.get(usernameKey) : configValue(usernameKey, defaultUsername);
         String password = config.getOptionalSecret(passwordKey);
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return;
@@ -6707,6 +6763,15 @@ public class EasyQQualityPolicyTest {
         }
         if (lower.equals("pavan") || lower.contains("pavan prabhu")) {
             return "Pavan Prabhu";
+        }
+        if (lower.equals("amitt") || lower.contains("amitt demo") || lower.contains("amit demo")) {
+            return "Amitt Demo";
+        }
+        if (lower.equals("anasuya") || lower.contains("anasuya roy")) {
+            return "Anasuya Roy";
+        }
+        if (lower.equals("shubham") || lower.contains("shubham tiwari")) {
+            return "Shubham Tiwari";
         }
         if (lower.equals("amit") || lower.contains("amit karane") || lower.contains("amit karni")) {
             return "Amit Karane";
