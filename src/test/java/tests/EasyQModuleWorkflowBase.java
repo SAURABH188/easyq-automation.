@@ -6,6 +6,7 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
@@ -14,14 +15,41 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import utils.ConfigReader;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public abstract class EasyQModuleWorkflowBase {
-    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_REJECT_REVIEWERS_AND_APPROVER_2026_07_11_A";
+    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_QP_STYLE_FLOW_2026_07_13_A";
+
+    private static final class DownloadFileState {
+        private final long size;
+        private final long modifiedMillis;
+
+        private DownloadFileState(long size, long modifiedMillis) {
+            this.size = size;
+            this.modifiedMillis = modifiedMillis;
+        }
+
+        private static DownloadFileState from(Path file) throws IOException {
+            return new DownloadFileState(Files.size(file), Files.getLastModifiedTime(file).toMillis());
+        }
+    }
 
     protected WebDriver driver;
     protected WebDriverWait wait;
@@ -29,6 +57,8 @@ public abstract class EasyQModuleWorkflowBase {
 
     private String latestRecordTitle;
     private String setupFailureMessage;
+    private int dynamicTextSequence;
+    private Path downloadDirectory;
 
     protected final String baseUrl = "https://beta.easyqsolutions.com/#/easyqsolutions/login";
     protected final String validEmail = "varunt@easyqsolutions.com";
@@ -68,6 +98,7 @@ public abstract class EasyQModuleWorkflowBase {
     @BeforeMethod
     public void setUp() {
         WebDriverManager.chromedriver().setup();
+        prepareDownloadDirectory();
         setupFailureMessage = null;
 
         for (int attempt = 1; attempt <= 2; attempt++) {
@@ -189,6 +220,8 @@ public abstract class EasyQModuleWorkflowBase {
 
         boolean reviewersAssigned = assignConfiguredReviewers();
         boolean approverAssigned = assignConfiguredApprover();
+        fillControlsByContext(uniqueWorkflowText("Send to Review assignment", moduleLabel() + " workflow comment"),
+                "Comment", "Comments", "Remark", "Remarks", "Observation");
         boolean submitted = clickButtonByText("Send for Review", "Send", "Submit", "Continue", "Done", "Save");
         waitForSmallDelay();
 
@@ -303,11 +336,6 @@ public abstract class EasyQModuleWorkflowBase {
                 return false;
             }
 
-            loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
-            if (!resubmitRejectedDraftFromVarunAccount("Reviewer 2 reject")) {
-                return false;
-            }
-
             reviewer1Done = performWorkflowAction(
                     workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
                     reviewer1Password(),
@@ -337,20 +365,6 @@ public abstract class EasyQModuleWorkflowBase {
                 return false;
             }
 
-            loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
-            if (!resubmitRejectedDraftFromVarunAccount("Approver reject")) {
-                return false;
-            }
-
-            reviewer1Done = performWorkflowAction(
-                    workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
-                    reviewer1Password(),
-                    "Reviewer 1 after Approver reject",
-                    "Approve");
-            if (!reviewer1Done) {
-                return false;
-            }
-
             reviewer2Done = performWorkflowAction(
                     workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
                     requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
@@ -368,6 +382,560 @@ public abstract class EasyQModuleWorkflowBase {
                 "Approve");
 
         return reviewer1Done && reviewer2Done && approverDone;
+    }
+
+    protected boolean verifyModulePostApprovalEvidence() {
+        boolean versionHistoryMatched = verifyModuleVersionHistoryPopupDownloadMatches();
+        boolean viewOnlyMatched = verifyApprovedAndObsoleteModuleRecordsAreViewOnly();
+        Reporter.log("WORKFLOW EVIDENCE: " + moduleLabel()
+                + " versionHistoryMatched=" + versionHistoryMatched
+                + ", approvedObsoleteViewOnly=" + viewOnlyMatched, true);
+        return versionHistoryMatched && viewOnlyMatched;
+    }
+
+    protected boolean verifyModuleVersionHistoryPopupDownloadMatches() {
+        loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
+        openModuleListPage();
+
+        boolean approvedTabOpened = clickModuleTab("Approved");
+        boolean popupOpened = approvedTabOpened && openVersionHistoryPopupFromCurrentTab();
+        if (!popupOpened) {
+            Reporter.log("VERSION HISTORY: Could not open " + moduleLabel()
+                    + " version history popup from Approved tab. Visible text: " + shortBodyText(), true);
+            return false;
+        }
+
+        String popupText = visibleDialogText();
+        if (!containsAnyIgnoreCase(popupText, "Date of Approval", "Version", "Reviewer/Approver", "Approver")) {
+            Reporter.log("VERSION HISTORY: Popup did not expose expected version history columns. Popup text: "
+                    + popupText.replaceAll("\\s+", " "), true);
+            return false;
+        }
+
+        Path downloadedFile;
+        try {
+            downloadedFile = downloadWordFromOpenPopup();
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("VERSION HISTORY: Word download failed for " + moduleLabel()
+                    + ": " + exception.getMessage(), true);
+            return false;
+        }
+
+        boolean matched = versionHistoryDownloadMatchesPopup(popupText, downloadedFile);
+        Reporter.log("VERSION HISTORY: " + moduleLabel() + " popup/download matched=" + matched
+                + ", file=" + downloadedFile, true);
+        closeTransientDialog();
+        return matched;
+    }
+
+    protected boolean verifyApprovedAndObsoleteModuleRecordsAreViewOnly() {
+        loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
+
+        boolean approvedOpened = openModuleRecordFromStatusTab("Approved", "Active");
+        boolean approvedViewOnly = approvedOpened
+                && verifyCurrentModuleDetailIsViewModeOnly("Approved");
+
+        boolean obsoleteOpened = openModuleRecordFromStatusTab("Obsolete", "Inactive");
+        boolean obsoleteViewOnly = obsoleteOpened
+                && verifyCurrentModuleDetailIsViewModeOnly("Obsolete");
+
+        Reporter.log("VIEW MODE: " + moduleLabel()
+                + " approvedOpened=" + approvedOpened
+                + ", approvedViewOnly=" + approvedViewOnly
+                + ", obsoleteOpened=" + obsoleteOpened
+                + ", obsoleteViewOnly=" + obsoleteViewOnly, true);
+        return approvedOpened && approvedViewOnly && obsoleteOpened && obsoleteViewOnly;
+    }
+
+    private boolean openModuleRecordFromStatusTab(String tabLabel, String fallbackStatus) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            openModuleListPage();
+            boolean tabClicked = clickModuleTab(tabLabel);
+            waitForSmallDelay();
+            if (hasNoModuleRecordsOnCurrentTab()) {
+                Reporter.log("VIEW MODE: " + moduleLabel() + " " + tabLabel
+                        + " tab has no records on attempt " + attempt + ".", true);
+                return false;
+            }
+            boolean opened = tabClicked && clickFirstViewActionOnCurrentTab();
+            if (!opened && fallbackStatus != null && !fallbackStatus.isBlank()) {
+                opened = openExistingRecordByStatus(tabLabel, fallbackStatus);
+            }
+            if (opened && isModuleDetailOpen()) {
+                return true;
+            }
+            waitForSmallDelay();
+        }
+        return false;
+    }
+
+    private boolean verifyCurrentModuleDetailIsViewModeOnly(String statusLabel) {
+        boolean evaluationOpened = clickButtonByText("Evaluation")
+                || pageContainsAny("Evaluation", "What is the change", "Why is the change");
+        waitForSmallDelay();
+        boolean evaluationViewOnly = evaluationOpened
+                && verifyCurrentTabHasNoEditableDataControls(statusLabel + " Evaluation", false);
+
+        boolean documentOpened = clickButtonByText("Document")
+                || pageContainsAny("Document Information", "Author", "Reviewer", "Approver");
+        waitForSmallDelay();
+        boolean documentInformationViewOnly = documentOpened
+                && verifyCurrentTabHasNoEditableDataControls(statusLabel + " Document Information", true);
+
+        Reporter.log("VIEW MODE: " + moduleLabel() + " " + statusLabel
+                + " evaluationOpened=" + evaluationOpened
+                + ", evaluationViewOnly=" + evaluationViewOnly
+                + ", documentOpened=" + documentOpened
+                + ", documentInformationViewOnly=" + documentInformationViewOnly, true);
+        return evaluationOpened && evaluationViewOnly && documentOpened && documentInformationViewOnly;
+    }
+
+    private boolean verifyCurrentTabHasNoEditableDataControls(String sectionLabel, boolean requireDocumentInformation) {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    "const requireDocumentInformation = Boolean(arguments[0]);"
+                            + "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "const textOf = el => normalize((el.innerText || el.textContent || '') + ' '"
+                            + "  + (el.getAttribute && (el.getAttribute('aria-label') || '')) + ' '"
+                            + "  + (el.getAttribute && (el.getAttribute('title') || '')) + ' '"
+                            + "  + (el.getAttribute && (el.getAttribute('placeholder') || '')));"
+                            + "const inChrome = el => !!el.closest('nav, header, [class*=sidebar], [class*=menu], [class*=Menu]');"
+                            + "const inDialog = el => !!el.closest('[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane');"
+                            + "const editableControls = Array.from(document.querySelectorAll('input, textarea, select, [contenteditable=true], .ql-editor'))"
+                            + "  .filter(el => visible(el) && !inChrome(el) && !inDialog(el))"
+                            + "  .filter(el => !el.disabled && !el.readOnly && el.getAttribute('aria-readonly') !== 'true')"
+                            + "  .filter(el => {"
+                            + "    const type = normalize(el.getAttribute('type'));"
+                            + "    const text = textOf(el);"
+                            + "    return type !== 'hidden' && type !== 'file' && !/search|filter|comment|remark/.test(text);"
+                            + "  });"
+                            + "const editActions = Array.from(document.querySelectorAll('button, a, [role=button]'))"
+                            + "  .filter(el => visible(el) && !inChrome(el) && !inDialog(el))"
+                            + "  .filter(el => {"
+                            + "    const text = textOf(el);"
+                            + "    if (/download|comment|move to draft|back|close/.test(text)) return false;"
+                            + "    return /save|send for review|submit|approve|reject|start editing|edit|delete|update|initiate/.test(text);"
+                            + "  });"
+                            + "const bodyText = normalize(document.body.innerText || document.body.textContent || '');"
+                            + "const documentInfoOk = !requireDocumentInformation || /document information|author|reviewer|approver|status/.test(bodyText);"
+                            + "return documentInfoOk && editableControls.length === 0 && editActions.length === 0"
+                            + "  ? 'VIEW_ONLY'"
+                            + "  : 'EDITABLE|documentInfoOk=' + documentInfoOk"
+                            + "    + '|editableControls=' + editableControls.length"
+                            + "    + '|editActions=' + editActions.length"
+                            + "    + '|actions=' + editActions.slice(0, 5).map(textOf).join(' || ');",
+                    requireDocumentInformation);
+            Reporter.log("VIEW MODE: " + sectionLabel + " result=" + result, true);
+            return "VIEW_ONLY".equals(String.valueOf(result));
+        } catch (RuntimeException exception) {
+            Reporter.log("VIEW MODE: " + sectionLabel + " verification failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
+    }
+
+    private boolean clickModuleTab(String tabLabel) {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    "const expected = String(arguments[0] || '').toLowerCase();"
+                            + "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "const candidates = Array.from(document.querySelectorAll('button, a, [role=tab], [role=button], div'))"
+                            + "  .filter(el => visible(el) && textOf(el) === expected)"
+                            + "  .map(el => ({el, rect: el.getBoundingClientRect()}))"
+                            + "  .sort((a, b) => a.rect.top - b.rect.top);"
+                            + "if (!candidates.length) return false;"
+                            + "const target = candidates[0].el;"
+                            + "target.scrollIntoView({block:'center'});"
+                            + "target.click();"
+                            + "return true;",
+                    tabLabel);
+            waitForSmallDelay();
+            return Boolean.TRUE.equals(result);
+        } catch (RuntimeException exception) {
+            return clickButtonByText(tabLabel);
+        }
+    }
+
+    private boolean clickFirstViewActionOnCurrentTab() {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const textOf = el => String((el.innerText || el.textContent || '') + ' '"
+                            + "  + (el.getAttribute && (el.getAttribute('aria-label') || '')) + ' '"
+                            + "  + (el.getAttribute && (el.getAttribute('title') || ''))).replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "const actions = Array.from(document.querySelectorAll('button, a, [role=button], [class*=btn]'))"
+                            + "  .filter(el => visible(el) && /\\bview\\b|\\bopen\\b|details/.test(textOf(el)))"
+                            + "  .filter(el => !el.closest('nav, header, [class*=sidebar], [class*=menu], [class*=Menu]'));"
+                            + "if (!actions.length) return false;"
+                            + "actions[0].scrollIntoView({block:'center'});"
+                            + "actions[0].click();"
+                            + "return true;");
+            waitForSmallDelay();
+            return Boolean.TRUE.equals(result);
+        } catch (RuntimeException exception) {
+            return clickButtonByText("View", "Open", "Details");
+        }
+    }
+
+    private boolean openVersionHistoryPopupFromCurrentTab() {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const clickLikeUser = el => {"
+                            + "  el.scrollIntoView({block:'center'});"
+                            + "  ['pointerdown','mousedown','mouseup','click'].forEach(type => el.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, view:window})));"
+                            + "};"
+                            + "const candidates = Array.from(document.querySelectorAll('button, a, [role=button], span, div'))"
+                            + "  .filter(el => visible(el))"
+                            + "  .filter(el => /^v\\s*\\d+$/i.test(String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim()))"
+                            + "  .filter(el => !el.closest('[role=dialog], .modal, .dialog, .overlay'));"
+                            + "if (!candidates.length) return false;"
+                            + "const target = candidates[0].closest('button, a, [role=button]') || candidates[0];"
+                            + "clickLikeUser(target);"
+                            + "return true;");
+            waitForSmallDelay();
+            return Boolean.TRUE.equals(result)
+                    && pageContainsAny("Date of Approval", "Reviewer/Approver", "Version");
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private String visibleDialogText() {
+        try {
+            Object text = ((JavascriptExecutor) driver).executeScript(
+                    "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const dialogs = Array.from(document.querySelectorAll('[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane'))"
+                            + "  .filter(visible)"
+                            + "  .sort((a, b) => (b.innerText || '').length - (a.innerText || '').length);"
+                            + "return dialogs.length ? (dialogs[0].innerText || dialogs[0].textContent || '') : (document.body.innerText || '');");
+            return String.valueOf(text);
+        } catch (RuntimeException exception) {
+            return getBodyText();
+        }
+    }
+
+    private Path downloadWordFromOpenPopup() {
+        Map<Path, DownloadFileState> existingFiles = currentDownloadSnapshot();
+        boolean clicked = clickDownloadInsideOpenDialog() || clickButtonByText("Download");
+        Assert.assertTrue(clicked, "Version history Download button should be clickable. Visible text: " + shortBodyText());
+        return waitForDownloadedFile(existingFiles, Duration.ofSeconds(45), "document");
+    }
+
+    private boolean clickDownloadInsideOpenDialog() {
+        for (WebElement dialog : driver.findElements(By.xpath("//*[contains(@class,'modal') or contains(@class,'dialog') or @role='dialog' or contains(@class,'overlay')]"))) {
+            if (!isUsable(dialog)) {
+                continue;
+            }
+            if (clickActionInside(dialog, "Download")) {
+                waitForSmallDelay();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<Path, DownloadFileState> currentDownloadSnapshot() {
+        Map<Path, DownloadFileState> files = new HashMap<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(downloadDirectory)) {
+            for (Path file : stream) {
+                Path absoluteFile = file.toAbsolutePath();
+                if (Files.isRegularFile(absoluteFile)) {
+                    files.put(absoluteFile, DownloadFileState.from(absoluteFile));
+                }
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to read download folder: " + downloadDirectory, exception);
+        }
+        return files;
+    }
+
+    private Path waitForDownloadedFile(Map<Path, DownloadFileState> existingFiles, Duration timeout, String expectedExtensionGroup) {
+        long endTime = System.currentTimeMillis() + timeout.toMillis();
+        while (System.currentTimeMillis() < endTime) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(downloadDirectory)) {
+                for (Path file : stream) {
+                    Path absoluteFile = file.toAbsolutePath();
+                    if (isCompletedDownload(absoluteFile)
+                            && matchesExpectedDownloadType(absoluteFile, expectedExtensionGroup)
+                            && isNewOrUpdatedDownload(absoluteFile, existingFiles)) {
+                        return absoluteFile;
+                    }
+                }
+            } catch (IOException exception) {
+                throw new IllegalStateException("Unable to wait for downloaded file in: " + downloadDirectory, exception);
+            }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        Assert.fail("No completed " + expectedExtensionGroup + " download found in "
+                + downloadDirectory + " within " + timeout.toSeconds() + " seconds");
+        return downloadDirectory;
+    }
+
+    private boolean matchesExpectedDownloadType(Path file, String expectedExtensionGroup) {
+        String fileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        if ("document".equals(expectedExtensionGroup)) {
+            return fileName.endsWith(".doc") || fileName.endsWith(".docx");
+        }
+        if ("pdf".equals(expectedExtensionGroup)) {
+            return fileName.endsWith(".pdf");
+        }
+        return true;
+    }
+
+    private boolean isNewOrUpdatedDownload(Path file, Map<Path, DownloadFileState> existingFiles) throws IOException {
+        DownloadFileState previousState = existingFiles.get(file);
+        if (previousState == null) {
+            return true;
+        }
+        DownloadFileState currentState = DownloadFileState.from(file);
+        return currentState.modifiedMillis > previousState.modifiedMillis
+                || currentState.size != previousState.size;
+    }
+
+    private boolean isCompletedDownload(Path file) {
+        try {
+            String fileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
+            return Files.isRegularFile(file)
+                    && Files.size(file) > 0
+                    && !fileName.endsWith(".crdownload")
+                    && !fileName.endsWith(".tmp");
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private boolean versionHistoryDownloadMatchesPopup(String popupText, Path downloadedFile) {
+        String normalizedPopupText = normalizeComparableText(popupText);
+        String downloadedText;
+        try {
+            downloadedText = normalizeComparableText(extractDownloadedFileText(downloadedFile));
+        } catch (RuntimeException exception) {
+            Reporter.log("VERSION HISTORY: Unable to read downloaded Word file "
+                    + downloadedFile + ": " + exception.getMessage(), true);
+            return false;
+        }
+
+        boolean modulePresent = containsNormalizedPhrase(downloadedText, moduleLabel());
+        boolean requiredColumnsPresent = containsNormalizedPhrase(downloadedText, "date of approval")
+                && containsNormalizedPhrase(downloadedText, "version")
+                && containsNormalizedPhrase(downloadedText, "what is the change")
+                && containsNormalizedPhrase(downloadedText, "why is the change")
+                && containsAnyNormalized(downloadedText, "reviewer approver", "reviewer", "approver");
+        Set<String> popupVersions = extractVersionNumbers(normalizedPopupText);
+        Set<String> downloadedVersions = extractVersionNumbers(downloadedText);
+        boolean versionNumbersMatch = !popupVersions.isEmpty() && downloadedVersions.containsAll(popupVersions);
+        Set<String> popupTokens = versionHistoryMeaningfulTokens(normalizedPopupText);
+        Set<String> downloadedTokens = versionHistoryMeaningfulTokens(downloadedText);
+        popupTokens.retainAll(downloadedTokens);
+        int requiredSharedTokens = Math.max(6, Math.min(14, versionHistoryMeaningfulTokens(normalizedPopupText).size() / 3));
+        boolean enoughSharedTokens = popupTokens.size() >= requiredSharedTokens;
+
+        Reporter.log("VERSION HISTORY: " + moduleLabel()
+                + " modulePresent=" + modulePresent
+                + ", requiredColumnsPresent=" + requiredColumnsPresent
+                + ", versionNumbersMatch=" + versionNumbersMatch
+                + ", sharedTokens=" + popupTokens.size()
+                + ", requiredSharedTokens=" + requiredSharedTokens
+                + ", popupVersions=" + popupVersions
+                + ", downloadedVersions=" + downloadedVersions, true);
+        return modulePresent && requiredColumnsPresent && versionNumbersMatch && enoughSharedTokens;
+    }
+
+    private String extractDownloadedFileText(Path file) {
+        String fileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        try {
+            if (fileName.endsWith(".docx")) {
+                return extractDocxText(file);
+            }
+            return stripXmlText(Files.readString(file, StandardCharsets.ISO_8859_1));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to extract downloaded file text from " + file, exception);
+        }
+    }
+
+    private String extractDocxText(Path file) throws IOException {
+        StringBuilder text = new StringBuilder();
+        try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(file))) {
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                String entryName = entry.getName();
+                byte[] entryBytes = zipInputStream.readAllBytes();
+                if (entryName.equals("word/document.xml")
+                        || entryName.startsWith("word/header")
+                        || entryName.startsWith("word/footer")) {
+                    text.append(stripXmlText(new String(entryBytes, StandardCharsets.UTF_8))).append(' ');
+                } else if (entryName.startsWith("word/afchunk")
+                        || entryName.endsWith(".mht")
+                        || entryName.endsWith(".html")
+                        || entryName.endsWith(".htm")) {
+                    text.append(stripXmlText(decodeQuotedPrintable(new String(entryBytes, StandardCharsets.UTF_8))))
+                            .append(' ');
+                }
+                zipInputStream.closeEntry();
+            }
+        }
+        return text.toString();
+    }
+
+    private String decodeQuotedPrintable(String value) {
+        String normalized = value.replace("=\r\n", "").replace("=\n", "");
+        StringBuilder decoded = new StringBuilder();
+        for (int index = 0; index < normalized.length(); index++) {
+            char current = normalized.charAt(index);
+            if (current == '=' && index + 2 < normalized.length()) {
+                String hex = normalized.substring(index + 1, index + 3);
+                try {
+                    decoded.append((char) Integer.parseInt(hex, 16));
+                    index += 2;
+                    continue;
+                } catch (NumberFormatException ignored) {
+                    // Keep literal content when the sequence is not quoted-printable hex.
+                }
+            }
+            decoded.append(current);
+        }
+        return decoded.toString();
+    }
+
+    private String stripXmlText(String value) {
+        return String.valueOf(value)
+                .replaceAll("<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String normalizeComparableText(String text) {
+        return stripXmlText(String.valueOf(text))
+                .replaceAll("[^\\p{Alnum}]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private boolean containsNormalizedPhrase(String normalizedText, String phrase) {
+        return normalizedText.contains(normalizeComparableText(phrase));
+    }
+
+    private boolean containsAnyNormalized(String normalizedText, String... phrases) {
+        for (String phrase : phrases) {
+            if (containsNormalizedPhrase(normalizedText, phrase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Set<String> extractVersionNumbers(String normalizedText) {
+        Set<String> versions = new LinkedHashSet<>();
+        Matcher matcher = Pattern.compile("\\bv\\s*\\d+\\b").matcher(normalizedText);
+        while (matcher.find()) {
+            versions.add(matcher.group().replaceAll("\\s+", ""));
+        }
+        return versions;
+    }
+
+    private Set<String> versionHistoryMeaningfulTokens(String normalizedText) {
+        Set<String> tokens = new LinkedHashSet<>();
+        Set<String> ignoredWords = Set.of(
+                "the", "and", "for", "with", "from", "this", "that", "date", "approval", "version",
+                "what", "why", "change", "reviewer", "approver", "quality", "objective", "policy",
+                "solutions", "easyq", "module", "status", "name", "document");
+        Matcher matcher = Pattern.compile("[a-z0-9]{3,}").matcher(normalizedText);
+        while (matcher.find()) {
+            String token = matcher.group();
+            if (!ignoredWords.contains(token)) {
+                tokens.add(token);
+            }
+        }
+        return tokens;
+    }
+
+    private boolean isModuleDetailOpen() {
+        String url = safeCurrentUrl().toLowerCase(Locale.ROOT);
+        return pageContainsAny(moduleLabel())
+                && (url.contains("view")
+                || url.contains("edit")
+                || url.contains("review")
+                || pageContainsAny("Evaluation", "Document", "Document Information", "Reviewer", "Approver"));
+    }
+
+    private void openModuleListPage() {
+        if (!isOnModulePage()) {
+            navigateToModule();
+        }
+        if (isModuleDetailUrl()) {
+            try {
+                driver.navigate().back();
+                waitForSmallDelay();
+            } catch (RuntimeException ignored) {
+                // Fallback below reopens the module from the menu.
+            }
+        }
+        if (!pageContainsAny("Draft", "Under Review", "Approved", "Obsolete")) {
+            if (openHamburgerMenu() && clickModuleFromHamburgerMenu()) {
+                waitForModulePage();
+            }
+        }
+    }
+
+    private boolean isModuleDetailUrl() {
+        String url = safeCurrentUrl().toLowerCase(Locale.ROOT);
+        return url.contains("/view")
+                || url.contains("/edit")
+                || url.contains("/review")
+                || url.contains("/approval");
+    }
+
+    private void closeTransientDialog() {
+        try {
+            ((JavascriptExecutor) driver).executeScript(
+                    "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const closeButton = Array.from(document.querySelectorAll('button, [role=button], .close'))"
+                            + "  .filter(visible)"
+                            + "  .find(el => /close|×|x/i.test(String(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || '').trim()));"
+                            + "if (closeButton) closeButton.click();");
+        } catch (RuntimeException ignored) {
+            // Closing the popup is cleanup only.
+        }
+        waitForSmallDelay();
     }
 
     private boolean resubmitRejectedDraftFromVarunAccount(String sourceStage) {
@@ -412,6 +980,14 @@ public abstract class EasyQModuleWorkflowBase {
 
     protected boolean hasModuleDataOrPageLoaded() {
         return !driver.findElements(tableOrCardData).isEmpty() || getBodyText().length() > 40;
+    }
+
+    protected boolean hasNoModuleRecordsOnCurrentTab() {
+        String bodyText = getBodyText();
+        return isOnModulePage()
+                && containsAnyIgnoreCase(bodyText, "No Pending Items", "No Data", "No Records", "No record")
+                && !containsAnyIgnoreCase(bodyText, "Document Information", "What is the change",
+                "Why is the change", "Reviewer 1", "Reviewer 2", "Approver", "Move to Draft");
     }
 
     protected boolean isElementDisplayed(By locator) {
@@ -469,9 +1045,35 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private void startBrowser() {
-        driver = new ChromeDriver();
+        ChromeOptions options = new ChromeOptions();
+        options.setExperimentalOption("prefs", chromeDownloadPreferences());
+        driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(30));
         driver.manage().window().maximize();
+    }
+
+    private void prepareDownloadDirectory() {
+        downloadDirectory = Path.of(
+                System.getProperty("user.dir"),
+                "target",
+                "easyq-downloads",
+                moduleLabel().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-"));
+        try {
+            Files.createDirectories(downloadDirectory);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to prepare " + moduleLabel()
+                    + " download folder: " + downloadDirectory, exception);
+        }
+    }
+
+    private Map<String, Object> chromeDownloadPreferences() {
+        Map<String, Object> preferences = new HashMap<>();
+        preferences.put("download.default_directory", downloadDirectory.toAbsolutePath().toString());
+        preferences.put("download.prompt_for_download", false);
+        preferences.put("download.directory_upgrade", true);
+        preferences.put("plugins.always_open_pdf_externally", true);
+        preferences.put("safebrowsing.enabled", true);
+        return preferences;
     }
 
     private void shutdownBrowser() {
@@ -698,7 +1300,9 @@ public abstract class EasyQModuleWorkflowBase {
         if (latestRecordTitle == null || latestRecordTitle.isBlank()) {
             latestRecordTitle = automationTitlePrefix() + " " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         }
-        String body = latestRecordTitle + " created by automation for " + moduleLabel()
+        String changeText = uniqueWorkflowText("Draft evaluation update", moduleLabel() + " change");
+        String reasonText = uniqueWorkflowText("Draft evaluation update", moduleLabel() + " reason");
+        String body = uniqueWorkflowText("Draft form content", moduleLabel() + " content")
                 + ". Reviewer 1 Varun, Reviewer 2 Pavan, Approver Amit Karane.";
 
         boolean filledAny = false;
@@ -712,8 +1316,18 @@ public abstract class EasyQModuleWorkflowBase {
             }
             try {
                 scrollIntoView(field);
+                String context = surroundingText(field) + " "
+                        + String.valueOf(field.getAttribute("placeholder")) + " "
+                        + String.valueOf(field.getAttribute("name")) + " "
+                        + String.valueOf(field.getAttribute("formcontrolname"));
+                String value = field.getTagName().equalsIgnoreCase("textarea") ? body : latestRecordTitle;
+                if (containsAnyIgnoreCase(context, "What is the change", "Change?")) {
+                    value = changeText;
+                } else if (containsAnyIgnoreCase(context, "Why is the change", "Change needed", "Reason")) {
+                    value = reasonText;
+                }
                 field.clear();
-                field.sendKeys(field.getTagName().equalsIgnoreCase("textarea") ? body : latestRecordTitle);
+                field.sendKeys(value);
                 filledAny = true;
                 waitForSmallDelay();
             } catch (RuntimeException ignored) {
@@ -768,8 +1382,7 @@ public abstract class EasyQModuleWorkflowBase {
         if (userName == null || userName.isBlank()) {
             return false;
         }
-
-        if (clickVisibleText(userName)) {
+        if (isWorkflowUserAlreadySelected(userName)) {
             return true;
         }
 
@@ -786,10 +1399,13 @@ public abstract class EasyQModuleWorkflowBase {
             try {
                 scrollIntoView(control);
                 safeClick(control);
-                control.clear();
-                control.sendKeys(userName);
+                String tagName = String.valueOf(control.getTagName()).toLowerCase(Locale.ROOT);
+                if ("input".equals(tagName) || "textarea".equals(tagName)) {
+                    control.clear();
+                    control.sendKeys(userName);
+                }
                 waitForSmallDelay();
-                if (clickVisibleText(userName)) {
+                if (clickWorkflowDropdownOption(userName) || isWorkflowUserAlreadySelected(userName)) {
                     return true;
                 }
             } catch (RuntimeException ignored) {
@@ -797,7 +1413,62 @@ public abstract class EasyQModuleWorkflowBase {
             }
         }
 
-        return pageContainsAny(userName);
+        return clickWorkflowDropdownOption(userName) || isWorkflowUserAlreadySelected(userName);
+    }
+
+    private boolean isWorkflowUserAlreadySelected(String userName) {
+        try {
+            Object selected = ((JavascriptExecutor) driver).executeScript(
+                    "const expected = String(arguments[0] || '').toLowerCase();"
+                            + "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "return Array.from(document.querySelectorAll('*')).some(el => {"
+                            + "  if (!visible(el)) return false;"
+                            + "  const text = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "  if (!text.includes(expected)) return false;"
+                            + "  const classText = String(el.className || '').toLowerCase();"
+                            + "  const selectedHolder = el.closest('[class*=chip], [class*=tag], [class*=multiValue], [class*=selected], .badge');"
+                            + "  return Boolean(selectedHolder) || /chip|tag|multivalue|selected|badge/.test(classText);"
+                            + "});",
+                    userName);
+            return Boolean.TRUE.equals(selected);
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private boolean clickWorkflowDropdownOption(String userName) {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    "const expected = String(arguments[0] || '').toLowerCase();"
+                            + "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = window.getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const clickLikeUser = el => {"
+                            + "  el.scrollIntoView({block:'center'});"
+                            + "  ['pointerdown','mousedown','mouseup','click'].forEach(type => el.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, view:window})));"
+                            + "};"
+                            + "const selectors = '[role=option], .ng-option, .mat-option, .react-select__option, li, [class*=option], [class*=Option]';"
+                            + "const candidates = Array.from(document.querySelectorAll(selectors)).filter(el => {"
+                            + "  if (!visible(el)) return false;"
+                            + "  if (el.closest('[class*=chip], [class*=tag], [class*=multiValue], .badge')) return false;"
+                            + "  const text = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "  return text.includes(expected);"
+                            + "});"
+                            + "if (!candidates.length) return false;"
+                            + "clickLikeUser(candidates[0]);"
+                            + "return true;",
+                    userName);
+            waitForSmallDelay();
+            return Boolean.TRUE.equals(result);
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 
     private boolean ensureUnderReviewFromApprovedOrExistingDraft() {
@@ -837,6 +1508,7 @@ public abstract class EasyQModuleWorkflowBase {
         } else {
             actionClicked = clickButtonByText("Approve", "Review", "Verify", "Submit", "Send", "Complete", "Done");
         }
+        fillReviewRemarks(action, roleLabel);
         confirmIfPrompt();
         waitForSmallDelay();
 
@@ -854,12 +1526,22 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private boolean openUnderReviewTask() {
-        return openExistingRecordByStatus("Under Review", "Review Pending", "Pending", "Review")
-                || clickButtonByText("My Tasks", "Assigned", "Review", "Approval")
-                || hasModuleDataOrPageLoaded();
+        if (openExistingRecordByStatus("Under Review", "Review Pending", "Pending", "Review")) {
+            return true;
+        }
+        if (hasNoModuleRecordsOnCurrentTab()) {
+            Reporter.log("WORKFLOW: No actionable " + moduleLabel()
+                    + " Under Review task is visible on the current tab.", true);
+            return false;
+        }
+        boolean opened = clickButtonByText("My Tasks", "Assigned", "Review", "Approval");
+        return opened && !hasNoModuleRecordsOnCurrentTab();
     }
 
     private boolean openExistingRecordByStatus(String... statuses) {
+        if (hasNoModuleRecordsOnCurrentTab()) {
+            return false;
+        }
         for (String status : statuses) {
             if (clickRecordContainingText(status)) {
                 waitForSmallDelay();
@@ -928,9 +1610,15 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private void fillReviewRemarks(String action, String roleLabel) {
-        String remarks = roleLabel + " " + action.toLowerCase(Locale.ROOT)
-                + " remarks added by automation on " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String remarks = uniqueWorkflowText(roleLabel + " " + action, moduleLabel() + " review remark");
         fillControlsByContext(remarks, "Remark", "Comment", "Reason", "Review", "Approval", "Observation");
+    }
+
+    private String uniqueWorkflowText(String stageLabel, String purposeLabel) {
+        dynamicTextSequence++;
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        return moduleLabel() + " | " + purposeLabel + " | " + stageLabel
+                + " | " + timestamp + " | seq " + dynamicTextSequence;
     }
 
     private boolean fillControlsByContext(String value, String... contextHints) {
@@ -969,7 +1657,8 @@ public abstract class EasyQModuleWorkflowBase {
             if (!isUsable(dialog)) {
                 continue;
             }
-            if (clickActionInside(dialog, "Confirm", "Yes", "OK", "Ok", "Submit", "Done", "Continue")) {
+            if (clickActionInside(dialog, "Confirm", "Yes", "Move to Draft", "Reject", "Approve",
+                    "OK", "Ok", "Submit", "Done", "Continue")) {
                 waitForSmallDelay();
                 return;
             }

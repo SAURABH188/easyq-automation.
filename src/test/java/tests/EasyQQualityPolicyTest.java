@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -42,7 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_FINAL_APPROVED_AND_OBSOLETE_VIEW_2026_07_13_AN";
+    private static final String QP_FLOW_CODE_VERSION = "QP_APPROVED_OBSOLETE_VIEW_ONLY_2026_07_13_AO";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -53,6 +54,7 @@ public class EasyQQualityPolicyTest {
     private String setupFailureMessage;
     private boolean qualityPolicyDraftCreatedInCurrentTest;
     private long actionWaitMillis = DEFAULT_ACTION_WAIT_MILLIS;
+    private int dynamicTextSequence;
     private final Set<String> failedDownloadStages = new LinkedHashSet<>();
 
     private final String baseUrl = "https://beta.easyqsolutions.com/#/easyqsolutions/login";
@@ -574,6 +576,22 @@ public class EasyQQualityPolicyTest {
                 "PDF downloaded file should match platform document data. File: " + pdfFile);
     }
 
+    @Test(priority = 42, description = "Verify version history popup download matches popup data")
+    // Manual Test Case ID: TC401
+    public void verifyVersionHistoryPopupDownloadMatchesPopupData() {
+        Assert.assertTrue(verifyApprovedVersionHistoryPopupDownloadMatches(),
+                "Version history popup data should match downloaded version history file. Visible text: "
+                        + shortBodyText());
+    }
+
+    @Test(priority = 43, description = "Verify Approved and Obsolete records are view-only")
+    // Manual Test Case ID: TC402
+    public void verifyApprovedAndObsoleteRecordsAreViewOnly() {
+        Assert.assertTrue(verifyApprovedAndObsoleteSectionsAreViewModeOnly(),
+                "Approved and Obsolete Quality Policy records should be view-only for Evaluation and Document Information. "
+                        + "Visible text: " + shortBodyText());
+    }
+
     private void loginWithValidCredentials() {
         loginAs(validEmail, getPassword());
     }
@@ -854,16 +872,18 @@ public class EasyQQualityPolicyTest {
             Reporter.log("WORKFLOW EXACT: Returned/Draft search tab=" + tab
                     + ", clicked=" + tabClicked + ", visible=" + shortBodyText(), true);
 
+            if (hasNoPolicyRecordsOnCurrentTab()) {
+                Reporter.log("WORKFLOW EXACT: " + tab
+                        + " tab has no QP records; not clicking any fallback View action.", true);
+                continue;
+            }
+
             if (latestPolicyTitle != null && clickVisibleText(latestPolicyTitle) && waitForQualityPolicyDetail()) {
                 return true;
             }
 
             if (openReturnedRecordOnCurrentTab(returnedStatuses)) {
                 return true;
-            }
-
-            if (pageContainsAny("No Pending Items", "No Data", "No Records")) {
-                continue;
             }
         }
 
@@ -872,7 +892,14 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean openReturnedRecordOnCurrentTab(String... statuses) {
+        if (hasNoPolicyRecordsOnCurrentTab()) {
+            return false;
+        }
+
         for (String status : statuses) {
+            if (hasNoPolicyRecordsOnCurrentTab()) {
+                return false;
+            }
             String lowerStatus = status.toLowerCase();
             List<WebElement> records = driver.findElements(By.xpath(
                     "//*[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '"
@@ -903,6 +930,9 @@ public class EasyQQualityPolicyTest {
             }
         }
 
+        if (hasNoPolicyRecordsOnCurrentTab()) {
+            return false;
+        }
         return clickVisibleRecordViewButton() && waitForQualityPolicyDetail();
     }
 
@@ -912,8 +942,9 @@ public class EasyQQualityPolicyTest {
         }
 
         clickButtonByText("Start Editing", "Edit");
-        fillEvaluationChangeMetadata("Automation update for What is the change in Quality Policy",
-                "Automation update for Why is the change needed in Quality Policy");
+        fillEvaluationChangeMetadata(
+                uniqueWorkflowText("Draft evaluation update", "QP change"),
+                uniqueWorkflowText("Draft evaluation update", "QP reason"));
 
         boolean saved = clickButtonByText("Save", "Save as Draft", "Update", "Submit");
         confirmIfPrompt();
@@ -958,7 +989,7 @@ public class EasyQQualityPolicyTest {
                 "Select Approvers", "Select Approver", "Choose only one", "Approver", "Approval User");
         setAllEmptyDueDatesToTodayOnce();
 
-        fillWorkflowComment("Automation comment for Quality Policy review flow");
+        fillWorkflowComment(uniqueWorkflowText("Send to Review assignment", "QP workflow comment"));
         scrollActiveDialogToBottom();
         fillAuthenticationPassword(getPassword());
 
@@ -1133,6 +1164,447 @@ public class EasyQQualityPolicyTest {
 
         Reporter.log("WORKFLOW: No approved Quality Policy row/card could be opened.", true);
         return false;
+    }
+
+    private boolean verifyApprovedVersionHistoryPopupDownloadMatches() {
+        Reporter.log("VERSION HISTORY: Opening Approved QP version badge and validating popup download.", true);
+        openQualityPolicyListFromAnyDetailView();
+        waitForQualityPolicyTabs();
+        boolean approvedTabClicked = clickQualityPolicySectionTab("Approved");
+        waitForQualityPolicyTabContentToFinishLoading();
+        Reporter.log("VERSION HISTORY: Approved tab clicked=" + approvedTabClicked
+                + ". Visible text: " + shortBodyText(), true);
+
+        if (!clickApprovedQualityPolicyVersionBadge()) {
+            Reporter.log("VERSION HISTORY FAILED: Approved QP version badge like V21 was not clickable. Visible text: "
+                    + shortBodyText(), true);
+            return false;
+        }
+
+        if (!waitForVersionHistoryPopup()) {
+            Reporter.log("VERSION HISTORY FAILED: Version history popup did not open after clicking version badge. "
+                    + "Visible text: " + shortBodyText(), true);
+            return false;
+        }
+
+        String popupText = captureVersionHistoryPopupText();
+        String normalizedPopupText = normalizeComparableText(popupText);
+        boolean popupValid = versionHistoryTextLooksValid(normalizedPopupText, "popup");
+        Reporter.log("VERSION HISTORY: Popup text length=" + normalizedPopupText.length()
+                + ", popupValid=" + popupValid, true);
+        if (!popupValid) {
+            closeVersionHistoryPopup();
+            return false;
+        }
+
+        Path historyDownload = downloadVersionHistoryFromPopup();
+        String downloadedText;
+        try {
+            downloadedText = normalizeComparableText(extractDownloadedFileText(historyDownload));
+        } catch (RuntimeException exception) {
+            Reporter.log("VERSION HISTORY FAILED: Could not extract downloaded history file text. File="
+                    + historyDownload + ", reason=" + exception.getMessage(), true);
+            closeVersionHistoryPopup();
+            return false;
+        }
+
+        boolean downloadedValid = versionHistoryTextLooksValid(downloadedText,
+                "downloaded file " + historyDownload.getFileName());
+        boolean popupMatchesDownload = versionHistoryDownloadedTextMatchesPopup(
+                normalizedPopupText, downloadedText, historyDownload);
+        closeVersionHistoryPopup();
+
+        Reporter.log("VERSION HISTORY: downloadedValid=" + downloadedValid
+                + ", popupMatchesDownload=" + popupMatchesDownload
+                + ", downloadedFile=" + historyDownload, true);
+        return downloadedValid && popupMatchesDownload;
+    }
+
+    private boolean clickApprovedQualityPolicyVersionBadge() {
+        try {
+            Object clicked = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const textOf = el => normalize((el && (el.innerText || el.textContent || '')) + ' '
+                              + ((el && el.getAttribute('aria-label')) || '') + ' '
+                              + ((el && el.getAttribute('title')) || ''));
+                            const blocked = el => !!el.closest('nav, aside, header, [class*=sidebar], [class*=menu]');
+                            const clickLikeUser = el => {
+                              const target = el.closest('button,a,[role=button],[role=link]') || el;
+                              target.scrollIntoView({block: 'center', inline: 'center'});
+                              const rect = target.getBoundingClientRect();
+                              const x = Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
+                              const y = Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
+                              const center = document.elementFromPoint(x, y);
+                              target.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                              target.click();
+                              if (center && center !== target && !blocked(center)) center.click();
+                              return target;
+                            };
+                            const versionText = text => /^v\\s*[0-9]+$/i.test(text) || /^v[0-9]+$/i.test(text);
+                            const cards = Array.from(document.querySelectorAll(
+                              'div, section, article, li, tr, [class*=card], [class*=Card], [class*=MuiPaper]'
+                            )).filter(visible).filter(el => !blocked(el)).filter(el => {
+                              const rect = el.getBoundingClientRect();
+                              const text = textOf(el);
+                              return rect.left > 80 && rect.top > 140 && rect.width > 220 && rect.height > 100
+                                && text.includes('quality policy')
+                                && text.includes('approved')
+                                && /v\\s*[0-9]+/.test(text)
+                                && !text.includes('draft under review approved obsolete');
+                            }).map(card => {
+                              const rect = card.getBoundingClientRect();
+                              const text = textOf(card);
+                              let score = 0;
+                              if (text.includes('quality policy')) score += 100;
+                              if (text.includes('approved')) score += 100;
+                              if (/v\\s*[0-9]+/.test(text)) score += 80;
+                              if (/[0-9]{1,2}-[a-z]{3}-[0-9]{4}/.test(text)) score += 20;
+                              score -= Math.min(120, (rect.width * rect.height) / 3500);
+                              return {card, rect, score};
+                            }).sort((a, b) => b.score - a.score || a.rect.top - b.rect.top);
+
+                            for (const item of cards) {
+                              const versionNodes = Array.from(item.card.querySelectorAll(
+                                'button,a,[role=button],[role=link],span,div,p'
+                              )).filter(visible).filter(el => !blocked(el)).filter(el => versionText(textOf(el)))
+                                .map(el => {
+                                  const rect = el.getBoundingClientRect();
+                                  let score = 0;
+                                  if (rect.left > item.rect.left + item.rect.width * 0.55) score += 80;
+                                  if (rect.top < item.rect.top + item.rect.height * 0.45) score += 40;
+                                  if (el.closest('button,a,[role=button],[role=link]')) score += 40;
+                                  score -= Math.min(80, (rect.width * rect.height) / 1200);
+                                  return {el, rect, score};
+                                }).sort((a, b) => b.score - a.score);
+                              if (versionNodes.length) {
+                                const clicked = clickLikeUser(versionNodes[0].el);
+                                const rect = clicked.getBoundingClientRect();
+                                return 'CLICKED_VERSION_BADGE:' + textOf(clicked) + ':'
+                                  + Math.round(rect.left) + ',' + Math.round(rect.top);
+                              }
+
+                              const point = document.elementFromPoint(
+                                Math.max(1, Math.min(window.innerWidth - 1, item.rect.right - 55)),
+                                Math.max(1, Math.min(window.innerHeight - 1, item.rect.top + 35))
+                              );
+                              if (point && !blocked(point)) {
+                                const clicked = clickLikeUser(point);
+                                const rect = clicked.getBoundingClientRect();
+                                return 'CLICKED_VERSION_POINT:' + textOf(clicked) + ':'
+                                  + Math.round(rect.left) + ',' + Math.round(rect.top);
+                              }
+                            }
+                            const directVersionNodes = Array.from(document.querySelectorAll(
+                              'button,a,[role=button],[role=link],span,div,p'
+                            )).filter(visible).filter(el => !blocked(el)).filter(el => {
+                              const rect = el.getBoundingClientRect();
+                              const text = textOf(el);
+                              return rect.left > 80
+                                && rect.top > 130
+                                && rect.width <= 140
+                                && rect.height <= 80
+                                && versionText(text);
+                            }).map(el => {
+                              const rect = el.getBoundingClientRect();
+                              let score = 0;
+                              if (el.closest('button,a,[role=button],[role=link]')) score += 80;
+                              if (rect.left > 450) score += 40;
+                              if (rect.top < 420) score += 30;
+                              score -= rect.top / 20;
+                              return {el, rect, score};
+                            }).sort((a, b) => b.score - a.score);
+                            if (directVersionNodes.length) {
+                              const clicked = clickLikeUser(directVersionNodes[0].el);
+                              const rect = clicked.getBoundingClientRect();
+                              return 'CLICKED_DIRECT_VERSION_BADGE:' + textOf(clicked) + ':'
+                                + Math.round(rect.left) + ',' + Math.round(rect.top);
+                            }
+                            return 'NO_VERSION_BADGE';
+                            """);
+            Reporter.log("VERSION HISTORY: version badge click result=" + clicked, true);
+            waitForSmallDelay();
+            return String.valueOf(clicked).startsWith("CLICKED_VERSION");
+        } catch (RuntimeException exception) {
+            Reporter.log("VERSION HISTORY: version badge click failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
+    }
+
+    private boolean waitForVersionHistoryPopup() {
+        try {
+            return new WebDriverWait(driver, Duration.ofSeconds(15)).until(currentDriver -> {
+                String popupText = captureVersionHistoryPopupText();
+                String normalizedPopupText = normalizeComparableText(popupText);
+                return containsNormalizedPhrase(normalizedPopupText, "Date of Approval")
+                        && containsNormalizedPhrase(normalizedPopupText, "Version")
+                        && containsNormalizedPhrase(normalizedPopupText, "What is the Change")
+                        && containsNormalizedPhrase(normalizedPopupText, "Why is the Change")
+                        && containsNormalizedPhrase(normalizedPopupText, "Reviewer Approver");
+            });
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private String captureVersionHistoryPopupText() {
+        try {
+            Object popupText = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el && (el.innerText || el.textContent || ''))
+                              .replace(/\\s+/g, ' ').trim();
+                            const roots = Array.from(document.querySelectorAll(
+                              '[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane, .mat-dialog-container, [class*=Modal], [class*=Dialog]'
+                            )).filter(visible).map(root => ({root, text: textOf(root), rect: root.getBoundingClientRect()}))
+                              .filter(item => {
+                                const text = item.text.toLowerCase();
+                                return text.includes('date of approval')
+                                  && text.includes('what is the change')
+                                  && text.includes('reviewer/approver');
+                              }).sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height));
+                            if (roots.length) return roots[0].text;
+                            return '';
+                            """);
+            return String.valueOf(popupText);
+        } catch (RuntimeException exception) {
+            return "";
+        }
+    }
+
+    private Path downloadVersionHistoryFromPopup() {
+        Map<Path, DownloadFileState> existingFiles = currentDownloadSnapshot();
+        Assert.assertTrue(clickVersionHistoryPopupDownloadButton(),
+                "Version history popup Download button should be clickable. Popup text: "
+                        + captureVersionHistoryPopupText());
+        Path downloadedFile = waitForDownloadedFile(existingFiles, Duration.ofSeconds(45), "document");
+        Reporter.log("VERSION HISTORY: downloaded popup history file=" + downloadedFile, true);
+        return downloadedFile;
+    }
+
+    private boolean clickVersionHistoryPopupDownloadButton() {
+        try {
+            Object clicked = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const textOf = el => normalize((el && (el.innerText || el.textContent || '')) + ' '
+                              + ((el && el.getAttribute('aria-label')) || '') + ' '
+                              + ((el && el.getAttribute('title')) || ''));
+                            const clickLikeUser = el => {
+                              const target = el.closest('button,a,[role=button],[role=link]') || el;
+                              target.scrollIntoView({block: 'center', inline: 'center'});
+                              target.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                              target.click();
+                              return target;
+                            };
+                            const roots = Array.from(document.querySelectorAll(
+                              '[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane, .mat-dialog-container, [class*=Modal], [class*=Dialog]'
+                            )).filter(visible).filter(root => {
+                              const text = textOf(root);
+                              return text.includes('date of approval')
+                                && text.includes('what is the change')
+                                && text.includes('reviewer/approver');
+                            });
+                            for (const root of roots) {
+                              const rootRect = root.getBoundingClientRect();
+                              const downloads = Array.from(root.querySelectorAll(
+                                'button,a,[role=button],[role=link],span,div'
+                              )).filter(visible).filter(el => textOf(el) === 'download' || textOf(el).includes('download'))
+                                .map(el => {
+                                  const target = el.closest('button,a,[role=button],[role=link]') || el;
+                                  const rect = target.getBoundingClientRect();
+                                  let score = 0;
+                                  if (target.matches('button,a,[role=button],[role=link]')) score += 100;
+                                  if (rect.top < rootRect.top + 120) score += 60;
+                                  if (rect.left > rootRect.left + rootRect.width * 0.65) score += 60;
+                                  if (textOf(target) === 'download') score += 40;
+                                  if (textOf(target).includes('close')) score -= 500;
+                                  return {target, rect, score};
+                                }).sort((a, b) => b.score - a.score);
+                              if (downloads.length) {
+                                const clicked = clickLikeUser(downloads[0].target);
+                                const rect = clicked.getBoundingClientRect();
+                                return 'CLICKED_VERSION_HISTORY_DOWNLOAD:' + textOf(clicked) + ':'
+                                  + Math.round(rect.left) + ',' + Math.round(rect.top);
+                              }
+                            }
+                            return 'NO_VERSION_HISTORY_DOWNLOAD';
+                            """);
+            Reporter.log("VERSION HISTORY: popup download click result=" + clicked, true);
+            waitForSmallDelay();
+            return String.valueOf(clicked).startsWith("CLICKED_VERSION_HISTORY_DOWNLOAD");
+        } catch (RuntimeException exception) {
+            Reporter.log("VERSION HISTORY: popup download click failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
+    }
+
+    private boolean versionHistoryTextLooksValid(String normalizedText, String sourceLabel) {
+        boolean dateColumnPresent = containsNormalizedPhrase(normalizedText, "Date of Approval");
+        boolean versionColumnPresent = containsNormalizedPhrase(normalizedText, "Version");
+        boolean changeColumnPresent = containsNormalizedPhrase(normalizedText, "What is the Change");
+        boolean reasonColumnPresent = containsNormalizedPhrase(normalizedText, "Why is the Change");
+        boolean reviewerApproverColumnPresent = containsNormalizedPhrase(normalizedText, "Reviewer Approver");
+        boolean versionRowPresent = !extractVersionNumbers(normalizedText).isEmpty();
+        boolean dateDataPresent = containsDateLikeValue(normalizedText);
+        boolean changeDataPresent = containsAnyNormalized(normalizedText,
+                "approve change update", "reject change update", "test of", "automation", "what is the change");
+        boolean reviewerApproverDataPresent = containsAnyNormalized(normalizedText,
+                "varun trivedi", "pavan prabhu", "amit karane", "reviewer", "approver");
+
+        boolean valid = dateColumnPresent
+                && versionColumnPresent
+                && changeColumnPresent
+                && reasonColumnPresent
+                && reviewerApproverColumnPresent
+                && versionRowPresent
+                && dateDataPresent
+                && changeDataPresent
+                && reviewerApproverDataPresent;
+        Reporter.log("VERSION HISTORY: " + sourceLabel + " valid=" + valid
+                + " (dateColumn=" + dateColumnPresent
+                + ", versionColumn=" + versionColumnPresent
+                + ", changeColumn=" + changeColumnPresent
+                + ", reasonColumn=" + reasonColumnPresent
+                + ", reviewerApproverColumn=" + reviewerApproverColumnPresent
+                + ", versionRow=" + versionRowPresent
+                + ", dateData=" + dateDataPresent
+                + ", changeData=" + changeDataPresent
+                + ", reviewerApproverData=" + reviewerApproverDataPresent + ")", true);
+        return valid;
+    }
+
+    private boolean versionHistoryDownloadedTextMatchesPopup(
+            String normalizedPopupText,
+            String normalizedDownloadedText,
+            Path downloadedFile) {
+        Set<String> popupVersions = extractVersionNumbers(normalizedPopupText);
+        Set<String> downloadedVersions = extractVersionNumbers(normalizedDownloadedText);
+        boolean versionsMatch = !popupVersions.isEmpty() && downloadedVersions.containsAll(popupVersions);
+
+        Set<String> popupTokens = versionHistoryMeaningfulTokens(normalizedPopupText);
+        Set<String> downloadedTokens = versionHistoryMeaningfulTokens(normalizedDownloadedText);
+        int sharedTokens = 0;
+        for (String token : popupTokens) {
+            if (downloadedTokens.contains(token)) {
+                sharedTokens++;
+            }
+        }
+        int requiredSharedTokens = Math.min(25, Math.max(8, popupTokens.size() / 3));
+        boolean sharedContentMatches = sharedTokens >= requiredSharedTokens;
+
+        boolean columnsMatch = containsNormalizedPhrase(normalizedDownloadedText, "Date of Approval")
+                && containsNormalizedPhrase(normalizedDownloadedText, "What is the Change")
+                && containsNormalizedPhrase(normalizedDownloadedText, "Why is the Change")
+                && containsNormalizedPhrase(normalizedDownloadedText, "Reviewer Approver");
+        boolean peopleMatch = expectedPeoplePresentInDownload(normalizedDownloadedText, normalizedPopupText);
+
+        boolean valid = versionsMatch && sharedContentMatches && columnsMatch && peopleMatch;
+        Reporter.log("VERSION HISTORY: popup/download comparison file=" + downloadedFile.getFileName()
+                + " versionsMatch=" + versionsMatch
+                + ", popupVersions=" + popupVersions
+                + ", downloadedVersions=" + downloadedVersions
+                + ", sharedTokens=" + sharedTokens
+                + ", requiredSharedTokens=" + requiredSharedTokens
+                + ", columnsMatch=" + columnsMatch
+                + ", peopleMatch=" + peopleMatch
+                + ", overall=" + valid, true);
+        return valid;
+    }
+
+    private Set<String> extractVersionNumbers(String normalizedText) {
+        Set<String> versions = new LinkedHashSet<>();
+        Matcher matcher = Pattern.compile("\\bv\\s*\\d+\\b").matcher(normalizedText);
+        while (matcher.find()) {
+            versions.add(matcher.group().replaceAll("\\s+", ""));
+        }
+        return versions;
+    }
+
+    private Set<String> versionHistoryMeaningfulTokens(String normalizedText) {
+        Set<String> tokens = new LinkedHashSet<>();
+        Set<String> ignoredWords = Set.of(
+                "quality", "policy", "date", "approval", "version", "what", "change",
+                "why", "reviewer", "approver", "download", "close", "the", "and", "for",
+                "using", "with", "from", "status", "name");
+        for (String token : normalizedText.split("\\s+")) {
+            if (token.length() < 3 || ignoredWords.contains(token)) {
+                continue;
+            }
+            tokens.add(token);
+            if (tokens.size() >= 120) {
+                break;
+            }
+        }
+        return tokens;
+    }
+
+    private void closeVersionHistoryPopup() {
+        try {
+            Object closed = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el && (el.innerText || el.textContent || '')).replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const roots = Array.from(document.querySelectorAll(
+                              '[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane, .mat-dialog-container, [class*=Modal], [class*=Dialog]'
+                            )).filter(visible).filter(root => {
+                              const text = textOf(root);
+                              return text.includes('date of approval') && text.includes('what is the change');
+                            });
+                            for (const root of roots) {
+                              const buttons = Array.from(root.querySelectorAll('button,a,[role=button],span,div'))
+                                .filter(visible).filter(el => {
+                                  const text = textOf(el);
+                                  return text === 'x' || text === '×' || text.includes('close');
+                                }).sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left);
+                              if (buttons.length) {
+                                const target = buttons[0].closest('button,a,[role=button]') || buttons[0];
+                                target.click();
+                                return true;
+                              }
+                            }
+                            return false;
+                            """);
+            if (!Boolean.TRUE.equals(closed)) {
+                closeTransientMenus();
+            } else {
+                waitForSmallDelay();
+            }
+        } catch (RuntimeException exception) {
+            closeTransientMenus();
+        }
     }
 
     private boolean openDocumentTab() {
@@ -2311,10 +2783,20 @@ public class EasyQQualityPolicyTest {
                               }
                               return lower(parts.join(' '));
                             };
-                            const roots = Array.from(document.querySelectorAll(
+                            const dialogRoots = Array.from(document.querySelectorAll(
                               '[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane, .mat-dialog-container'
                             )).filter(visible);
-                            roots.push(document.body);
+                            const workflowRoots = dialogRoots.filter(root => {
+                              const text = textOf(root);
+                              return text.includes('send quality policy for review')
+                                || text.includes('select reviewers')
+                                || text.includes('select approvers')
+                                || (text.includes('reviewer') && text.includes('approver'));
+                            });
+                            const roots = workflowRoots.length ? workflowRoots : dialogRoots;
+                            if (!roots.length) {
+                              return 'NO_WORKFLOW_DIALOG';
+                            }
                             const selector = [
                               'input:not([type=hidden]):not([disabled])',
                               'textarea:not([disabled])',
@@ -2322,12 +2804,11 @@ public class EasyQQualityPolicyTest {
                               '[role=combobox]',
                               '.ng-select',
                               '.ng-select-container',
+                              '.ng-arrow-wrapper',
                               '.ant-select',
                               '.mat-select',
                               '[class*=select]',
-                              '[class*=Select]',
-                              'button',
-                              '[role=button]'
+                              '[class*=Select]'
                             ].join(',');
                             const controls = [];
                             for (const root of roots) {
@@ -2347,6 +2828,15 @@ public class EasyQQualityPolicyTest {
                                   || context.includes('due date') || context.includes('calendar')) {
                                 continue;
                               }
+                              const rect = control.getBoundingClientRect();
+                              if (rect.top < 90 || rect.left < 350) {
+                                continue;
+                              }
+                              if (text.includes('hamburger') || text.includes('floating-toggle')
+                                  || text.includes('chevron_right') || text.includes('right_panel_open')
+                                  || context.includes('dashboard')) {
+                                continue;
+                              }
                               let score = 0;
                               for (const label of labels) {
                                 if (text.includes(label)) score += 25;
@@ -2360,7 +2850,6 @@ public class EasyQQualityPolicyTest {
                               if (text.includes('choose') || context.includes('choose')) score += 8;
                               if (tag === 'input' || tag === 'textarea' || control.isContentEditable) score += 20;
                               if (control.getAttribute('role') === 'combobox' || text.includes('ng-select') || text.includes('ant-select')) score += 15;
-                              const rect = control.getBoundingClientRect();
                               score += Math.max(0, 30 - Math.round(rect.top / 80));
                               if (score > bestScore) {
                                 bestScore = score;
@@ -2838,9 +3327,10 @@ public class EasyQQualityPolicyTest {
     private boolean resubmitRejectedDraftFromVarunAccount() {
         Reporter.log("WORKFLOW EXACT: Opening returned Draft QP after Reviewer 1 rejection, updating Evaluation, "
                 + "and sending again to Varun/Pavan/Amit.", true);
-        navigateToQualityPolicy();
+        Reporter.log("WORKFLOW EXACT: Re-login as Varun initiator, open Quality Policy, then open Draft tab.", true);
+        loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
 
-        if (!openDraftOrReturnedQualityPolicy()) {
+        if (!waitForRejectedQualityPolicyInVarunDraft()) {
             Reporter.log("WORKFLOW EXACT: Rejected QP was expected in Draft, but no Draft/Returned record opened. "
                     + "Visible text: " + shortBodyText(), true);
             return false;
@@ -2868,8 +3358,9 @@ public class EasyQQualityPolicyTest {
 
         openEvaluationTab();
         clickButtonByText("Start Editing", "Edit");
-        fillEvaluationChangeMetadata(roleLabel + " " + action + " change update",
-                roleLabel + " " + action + " validation update added by automation");
+        fillEvaluationChangeMetadata(
+                uniqueWorkflowText(roleLabel + " " + action, "QP change"),
+                uniqueWorkflowText(roleLabel + " " + action, "QP reason"));
         clickButtonByText("Save", "Update", "Save as Draft");
         confirmIfPrompt();
         openDocumentTab();
@@ -2923,7 +3414,7 @@ public class EasyQQualityPolicyTest {
         int maxAttempts = Math.max(3, config.getInt("explicitWait") / 5);
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             navigateToQualityPolicy();
-            boolean draftFound = openDraftOrReturnedQualityPolicy();
+            boolean draftFound = openDraftOrReturnedQualityPolicyFromDraftTabOnly();
             Reporter.log("WORKFLOW EXACT: Varun Draft/Returned reflection attempt "
                     + attempt + "/" + maxAttempts + " result=" + draftFound
                     + ". Visible text: " + shortBodyText(), true);
@@ -2933,6 +3424,27 @@ public class EasyQQualityPolicyTest {
             waitForReflectionDelay();
         }
         return false;
+    }
+
+    private boolean openDraftOrReturnedQualityPolicyFromDraftTabOnly() {
+        Reporter.log("WORKFLOW EXACT: Opening Varun Draft tab for rejected/returned QP.", true);
+        navigateToQualityPolicy();
+        boolean tabClicked = clickQualityPolicySectionTab("Draft");
+        waitForQualityPolicyTabContentToFinishLoading();
+        waitForSmallDelay();
+        Reporter.log("WORKFLOW EXACT: Draft-only returned search clicked=" + tabClicked
+                + ", visible=" + shortBodyText(), true);
+
+        if (hasNoPolicyRecordsOnCurrentTab()) {
+            Reporter.log("WORKFLOW EXACT: Draft tab currently has no returned QP record.", true);
+            return false;
+        }
+
+        if (latestPolicyTitle != null && clickVisibleText(latestPolicyTitle) && waitForQualityPolicyDetail()) {
+            return true;
+        }
+
+        return openReturnedRecordOnCurrentTab("Draft", "Rejected", "Changes Requested", "Returned", "Rework", "Saved in Draft");
     }
 
     private void waitForReflectionDelay() {
@@ -2955,12 +3467,24 @@ public class EasyQQualityPolicyTest {
         clickQualityPolicySectionTab("Under Review");
         waitForSmallDelay();
 
+        if (hasNoPolicyRecordsOnCurrentTab()) {
+            Reporter.log("WORKFLOW EXACT: Under Review tab has no QP task records.", true);
+            return false;
+        }
+
         if (latestPolicyTitle != null && clickVisibleText(latestPolicyTitle)) {
             return waitForDocumentActionArea();
         }
 
-        return openExistingRecordByStatus("Under Review", "Review Pending", "Pending", "Review")
-                || (clickVisibleRecordViewButton() && waitForDocumentActionArea());
+        if (openExistingRecordByStatus("Under Review", "Review Pending", "Pending", "Review")) {
+            return true;
+        }
+
+        if (hasNoPolicyRecordsOnCurrentTab()) {
+            return false;
+        }
+
+        return clickVisibleRecordViewButton() && waitForDocumentActionArea();
     }
 
     private boolean openPostActionDocumentForDownload(String action, String roleLabel) {
@@ -3015,10 +3539,10 @@ public class EasyQQualityPolicyTest {
         }
 
         Path editableFile = downloadDocumentOption("Editable", "Editible", "Word", "Doc", "Document");
-        boolean editableMatches = downloadedFileMatchesPlatformData(editableFile, platformDocumentText);
+        boolean editableMatches = downloadedFileMatchesPlatformData(editableFile, platformDocumentText, stageLabel);
 
         Path pdfFile = downloadDocumentOption("PDF", "Pdf");
-        boolean pdfMatches = downloadedFileMatchesPlatformData(pdfFile, platformDocumentText);
+        boolean pdfMatches = downloadedFileMatchesPlatformData(pdfFile, platformDocumentText, stageLabel);
 
         restoreActionAreaAfterDownloadVerification();
         Reporter.log("DOWNLOAD STAGE: " + stageLabel + " editableMatches=" + editableMatches
@@ -3272,31 +3796,41 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean downloadedFileMatchesPlatformData(Path downloadedFile, String platformDocumentText) {
+        return downloadedFileMatchesPlatformData(downloadedFile, platformDocumentText, "manual-download-validation");
+    }
+
+    private boolean downloadedFileMatchesPlatformData(Path downloadedFile, String platformDocumentText, String stageLabel) {
+        String rawDownloadedText;
         String downloadedText;
         try {
-            downloadedText = normalizeComparableText(extractDownloadedFileText(downloadedFile));
+            rawDownloadedText = extractDownloadedFileText(downloadedFile);
+            downloadedText = normalizeComparableText(rawDownloadedText);
         } catch (StackOverflowError error) {
             Reporter.log("DOWNLOAD VERIFY: Text extraction overflow for " + downloadedFile
-                    + ". Falling back to file existence/size validation.", true);
-            return downloadedFileLooksValid(downloadedFile);
+                    + ". Download integrity cannot be confirmed.", true);
+            return false;
         } catch (RuntimeException exception) {
             Reporter.log("DOWNLOAD VERIFY: Text extraction failed for " + downloadedFile + ": "
-                    + exception.getMessage() + ". Falling back to file existence/size validation.", true);
-            return downloadedFileLooksValid(downloadedFile);
+                    + exception.getMessage() + ". Download integrity cannot be confirmed.", true);
+            return false;
         }
         Reporter.log("DOWNLOAD VERIFY: Platform text length=" + platformDocumentText.length()
                 + ", downloaded text length=" + downloadedText.length(), true);
 
-        if (downloadedText.length() < 20) {
-            Reporter.log("DOWNLOAD VERIFY: Extracted text is too short for deep comparison; file exists/size check will be used for "
+        if (downloadedText.length() < 100) {
+            Reporter.log("DOWNLOAD VERIFY: Extracted text is too short for QP data integrity validation: "
                     + downloadedFile, true);
-            return downloadedFileLooksValid(downloadedFile);
+            return false;
         }
-        if (latestPolicyTitle != null && !latestPolicyTitle.isBlank()
-                && downloadedText.contains(normalizeComparableText(latestPolicyTitle))) {
-            return true;
-        }
-        return hasEnoughSharedContent(platformDocumentText, downloadedText);
+
+        boolean sharedContentMatches = hasEnoughSharedContent(platformDocumentText, downloadedText);
+        boolean sectionIntegrityMatches = downloadedQualityPolicyIntegrityMatches(
+                downloadedFile, rawDownloadedText, downloadedText, platformDocumentText, stageLabel);
+        Reporter.log("DOWNLOAD VERIFY: stage=" + stageLabel
+                + ", sharedContentMatches=" + sharedContentMatches
+                + ", sectionIntegrityMatches=" + sectionIntegrityMatches
+                + ", file=" + downloadedFile.getFileName(), true);
+        return sharedContentMatches && sectionIntegrityMatches;
     }
 
     private boolean downloadedFileLooksValid(Path downloadedFile) {
@@ -3311,11 +3845,257 @@ public class EasyQQualityPolicyTest {
         }
     }
 
+    private boolean downloadedQualityPolicyIntegrityMatches(
+            Path downloadedFile,
+            String rawDownloadedText,
+            String normalizedDownloadedText,
+            String normalizedPlatformText,
+            String stageLabel) {
+        boolean documentInformationValid = downloadedDocumentInformationMatches(
+                downloadedFile, normalizedDownloadedText, normalizedPlatformText, stageLabel);
+        boolean historyValid = downloadedVersionChangeHistoryMatches(
+                downloadedFile, normalizedDownloadedText, stageLabel);
+        boolean signaturesValid = downloadedSignatureTableMatches(
+                downloadedFile, normalizedDownloadedText, stageLabel);
+        boolean layoutAndContentLoaded = downloadedContentLooksLoadedAndReadable(
+                downloadedFile, rawDownloadedText, normalizedDownloadedText, stageLabel);
+
+        boolean valid = documentInformationValid
+                && historyValid
+                && signaturesValid
+                && layoutAndContentLoaded;
+        Reporter.log("DOWNLOAD INTEGRITY: " + stageLabel
+                + " file=" + downloadedFile.getFileName()
+                + " documentInformation=" + documentInformationValid
+                + ", versionChangeHistory=" + historyValid
+                + ", signatures=" + signaturesValid
+                + ", contentUiLoaded=" + layoutAndContentLoaded
+                + ", overall=" + valid, true);
+        return valid;
+    }
+
+    private boolean downloadedDocumentInformationMatches(
+            Path downloadedFile,
+            String normalizedDownloadedText,
+            String normalizedPlatformText,
+            String stageLabel) {
+        boolean titlePresent = containsNormalizedPhrase(normalizedDownloadedText, "Quality Policy");
+        boolean versionPresent = Pattern.compile("\\bv\\d+\\b").matcher(normalizedDownloadedText).find();
+        boolean workflowStatusPresent = containsAnyNormalized(normalizedDownloadedText,
+                "approved", "under review", "draft", "pending", "completed", "rejected");
+        boolean expectedPeoplePresent = expectedPeoplePresentInDownload(normalizedDownloadedText, normalizedPlatformText);
+        boolean documentInfoHeadingPresent = containsNormalizedPhrase(normalizedDownloadedText, "Document Information");
+
+        if (!documentInfoHeadingPresent) {
+            Reporter.log("DOWNLOAD INTEGRITY WARNING: " + stageLabel + " "
+                    + downloadedFile.getFileName()
+                    + " does not contain a literal 'Document Information' heading. "
+                    + "Validating document metadata through title/version/status/reviewer/approver data instead.", true);
+        }
+
+        boolean valid = titlePresent && versionPresent && workflowStatusPresent && expectedPeoplePresent;
+        return logDownloadIntegrityCheck(stageLabel, downloadedFile, "Document Information metadata",
+                valid,
+                "title=" + titlePresent
+                        + ", version=" + versionPresent
+                        + ", status=" + workflowStatusPresent
+                        + ", expectedPeople=" + expectedPeoplePresent
+                        + ", literalHeading=" + documentInfoHeadingPresent);
+    }
+
+    private boolean downloadedVersionChangeHistoryMatches(
+            Path downloadedFile,
+            String normalizedDownloadedText,
+            String stageLabel) {
+        boolean headingPresent = containsNormalizedPhrase(normalizedDownloadedText,
+                "Quality Policy Version Change History");
+        boolean dateColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Date of Approval");
+        boolean versionColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Version");
+        boolean changeColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "What is the change");
+        boolean reasonColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Why is the change");
+        boolean reviewerApproverColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Reviewer Approver");
+        boolean atLeastOneVersionRowPresent = Pattern.compile("\\bv\\d+\\b").matcher(normalizedDownloadedText).find();
+        boolean reviewerOrApproverDataPresent = containsAnyNormalized(normalizedDownloadedText,
+                "varun trivedi", "pavan prabhu", "amit karane", "reviewer 1", "reviewer 2", "approver");
+        boolean dateDataPresent = containsDateLikeValue(normalizedDownloadedText)
+                || containsNormalizedPhrase(normalizedDownloadedText, "date of approval");
+
+        boolean valid = headingPresent
+                && dateColumnPresent
+                && versionColumnPresent
+                && changeColumnPresent
+                && reasonColumnPresent
+                && reviewerApproverColumnPresent
+                && atLeastOneVersionRowPresent
+                && reviewerOrApproverDataPresent
+                && dateDataPresent;
+        return logDownloadIntegrityCheck(stageLabel, downloadedFile, "Quality Policy Version Change History",
+                valid,
+                "heading=" + headingPresent
+                        + ", dateColumn=" + dateColumnPresent
+                        + ", versionColumn=" + versionColumnPresent
+                        + ", changeColumn=" + changeColumnPresent
+                        + ", reasonColumn=" + reasonColumnPresent
+                        + ", reviewerApproverColumn=" + reviewerApproverColumnPresent
+                        + ", versionRows=" + atLeastOneVersionRowPresent
+                        + ", reviewerApproverData=" + reviewerOrApproverDataPresent
+                        + ", dateData=" + dateDataPresent);
+    }
+
+    private boolean downloadedSignatureTableMatches(
+            Path downloadedFile,
+            String normalizedDownloadedText,
+            String stageLabel) {
+        boolean headingPresent = containsNormalizedPhrase(normalizedDownloadedText,
+                "Signatures are executed using easyQ Solutions eQMS");
+        boolean nameColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Name");
+        boolean roleColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Reviewer Approver");
+        boolean statusColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Status");
+        boolean dateColumnPresent = containsNormalizedPhrase(normalizedDownloadedText, "Date");
+        boolean reviewer1Present = containsNormalizedPhrase(normalizedDownloadedText, "Reviewer 1")
+                && containsNormalizedPhrase(normalizedDownloadedText, "Varun Trivedi");
+        boolean reviewer2Present = containsNormalizedPhrase(normalizedDownloadedText, "Reviewer 2")
+                && containsNormalizedPhrase(normalizedDownloadedText, "Pavan Prabhu");
+        boolean approverPresent = containsNormalizedPhrase(normalizedDownloadedText, "Approver")
+                && containsNormalizedPhrase(normalizedDownloadedText, "Amit Karane");
+        boolean statusDataPresent = containsAnyNormalized(normalizedDownloadedText,
+                "completed", "pending", "approved", "rejected", "under review");
+        boolean dateTimePresent = containsDateLikeValue(normalizedDownloadedText)
+                && containsTimeLikeValue(normalizedDownloadedText);
+
+        boolean valid = headingPresent
+                && nameColumnPresent
+                && roleColumnPresent
+                && statusColumnPresent
+                && dateColumnPresent
+                && reviewer1Present
+                && reviewer2Present
+                && approverPresent
+                && statusDataPresent
+                && dateTimePresent;
+        return logDownloadIntegrityCheck(stageLabel, downloadedFile,
+                "Signatures executed using easyQ Solutions eQMS",
+                valid,
+                "heading=" + headingPresent
+                        + ", nameColumn=" + nameColumnPresent
+                        + ", roleColumn=" + roleColumnPresent
+                        + ", statusColumn=" + statusColumnPresent
+                        + ", dateColumn=" + dateColumnPresent
+                        + ", reviewer1Varun=" + reviewer1Present
+                        + ", reviewer2Pavan=" + reviewer2Present
+                        + ", approverAmit=" + approverPresent
+                        + ", statusData=" + statusDataPresent
+                        + ", dateTime=" + dateTimePresent);
+    }
+
+    private boolean downloadedContentLooksLoadedAndReadable(
+            Path downloadedFile,
+            String rawDownloadedText,
+            String normalizedDownloadedText,
+            String stageLabel) {
+        boolean enoughContent = normalizedDownloadedText.length() > 500;
+        boolean noBrokenPlaceholders = !containsAnyNormalized(normalizedDownloadedText,
+                "undefined", "null", "nan", "object object", "error loading", "failed to load");
+        boolean corePolicyContentPresent = containsAnyNormalized(normalizedDownloadedText,
+                "committed to providing product and services",
+                "expectations of our customers",
+                "improve our processes products and services",
+                "quality safety legal and regulatory requirements");
+        boolean pdfFooterPresentWhenPdf = !downloadedFile.getFileName().toString().toLowerCase().endsWith(".pdf")
+                || Pattern.compile("\\bpage\\s+\\d+\\s+of\\s+\\d+\\b").matcher(normalizedDownloadedText).find();
+        boolean noReplacementCharacterNoise = rawDownloadedText.chars().filter(character -> character == '\uFFFD').count() < 5;
+
+        boolean valid = enoughContent
+                && noBrokenPlaceholders
+                && corePolicyContentPresent
+                && pdfFooterPresentWhenPdf
+                && noReplacementCharacterNoise;
+        return logDownloadIntegrityCheck(stageLabel, downloadedFile, "Basic content/UI loaded health",
+                valid,
+                "enoughContent=" + enoughContent
+                        + ", noBrokenPlaceholders=" + noBrokenPlaceholders
+                        + ", corePolicyContent=" + corePolicyContentPresent
+                        + ", pdfFooter=" + pdfFooterPresentWhenPdf
+                        + ", noReplacementNoise=" + noReplacementCharacterNoise);
+    }
+
+    private boolean expectedPeoplePresentInDownload(String normalizedDownloadedText, String normalizedPlatformText) {
+        String[] expectedPeople = {
+                configValue("EASYQ_QP_REVIEWER1_NAME", "Varun Trivedi"),
+                configValue("EASYQ_QP_REVIEWER2_NAME", "Pavan Prabhu"),
+                configValue("EASYQ_QP_APPROVER_NAME", "Amit Karane")
+        };
+        boolean allPresent = true;
+        for (String expectedPerson : expectedPeople) {
+            String normalizedName = normalizeComparableText(expectedPerson);
+            boolean expectedFromPlatform = normalizedPlatformText.contains(normalizedName)
+                    || normalizedDownloadedText.contains("signatures are executed");
+            boolean present = !expectedFromPlatform || normalizedDownloadedText.contains(normalizedName);
+            if (!present) {
+                Reporter.log("DOWNLOAD INTEGRITY: Expected person missing from downloaded QP file: "
+                        + expectedPerson, true);
+            }
+            allPresent = allPresent && present;
+        }
+        return allPresent;
+    }
+
+    private boolean logDownloadIntegrityCheck(
+            String stageLabel,
+            Path downloadedFile,
+            String checkName,
+            boolean passed,
+            String details) {
+        Reporter.log("DOWNLOAD INTEGRITY: " + stageLabel
+                + " [" + downloadedFile.getFileName() + "] "
+                + checkName + "=" + passed + " (" + details + ")", true);
+        return passed;
+    }
+
+    private boolean containsAnyNormalized(String normalizedText, String... phrases) {
+        for (String phrase : phrases) {
+            if (containsNormalizedPhrase(normalizedText, phrase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsNormalizedPhrase(String normalizedText, String phrase) {
+        String normalizedPhrase = normalizeComparableText(phrase);
+        if (normalizedPhrase.isBlank()) {
+            return false;
+        }
+        return (" " + normalizedText + " ").contains(" " + normalizedPhrase + " ");
+    }
+
+    private boolean containsDateLikeValue(String normalizedText) {
+        return Pattern.compile("\\b\\d{1,2}\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\\s+\\d{4}\\b",
+                        Pattern.CASE_INSENSITIVE)
+                .matcher(normalizedText)
+                .find()
+                || Pattern.compile("\\b\\d{1,2}\\s+\\d{1,2}\\s+\\d{4}\\b")
+                .matcher(normalizedText)
+                .find()
+                || Pattern.compile("\\b\\d{4}\\s+\\d{1,2}\\s+\\d{1,2}\\b")
+                .matcher(normalizedText)
+                .find();
+    }
+
+    private boolean containsTimeLikeValue(String normalizedText) {
+        return Pattern.compile("\\b\\d{1,2}\\s+\\d{2}\\s+(am|pm)\\b", Pattern.CASE_INSENSITIVE)
+                .matcher(normalizedText)
+                .find();
+    }
+
     private String extractDownloadedFileText(Path file) {
         String fileName = file.getFileName().toString().toLowerCase();
         try {
             if (fileName.endsWith(".docx")) {
                 return extractDocxText(file);
+            }
+            if (fileName.endsWith(".xlsx")) {
+                return extractXlsxText(file);
             }
             if (fileName.endsWith(".pdf")) {
                 return extractPdfText(file);
@@ -3327,6 +4107,24 @@ public class EasyQQualityPolicyTest {
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to extract downloaded file text from " + file, exception);
         }
+    }
+
+    private String extractXlsxText(Path file) throws IOException {
+        StringBuilder text = new StringBuilder();
+        try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(file))) {
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                String entryName = entry.getName();
+                if (entryName.equals("xl/sharedStrings.xml")
+                        || entryName.startsWith("xl/worksheets/")
+                        || entryName.startsWith("docProps/")) {
+                    text.append(stripXmlText(new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8)))
+                            .append(' ');
+                }
+                zipInputStream.closeEntry();
+            }
+        }
+        return text.toString();
     }
 
     private String extractDocxText(Path file) throws IOException {
@@ -3485,12 +4283,16 @@ public class EasyQQualityPolicyTest {
     }
 
     private String stripXmlText(String xml) {
-        return xml.replaceAll("<[^>]+>", " ")
+        return xml.replaceAll("(?is)<style[^>]*>.*?</style>", " ")
+                .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
+                .replaceAll("<[^>]+>", " ")
                 .replace("&amp;", "&")
                 .replace("&lt;", "<")
                 .replace("&gt;", ">")
                 .replace("&quot;", "\"")
-                .replace("&apos;", "'");
+                .replace("&apos;", "'")
+                .replace("&nbsp;", " ")
+                .replace("&#160;", " ");
     }
 
     private String readTextFile(Path file) throws IOException {
@@ -3555,6 +4357,12 @@ public class EasyQQualityPolicyTest {
             }
             waitForSmallDelay();
 
+            if (hasNoPolicyRecordsOnCurrentTab()) {
+                Reporter.log("WORKFLOW EXACT: " + status
+                        + " tab/status area has no QP records; skipping View fallbacks.", true);
+                continue;
+            }
+
             if (isQualityPolicyDetailOpen() || isDocumentActionAreaOpen()) {
                 return true;
             }
@@ -3587,12 +4395,20 @@ public class EasyQQualityPolicyTest {
                 }
             }
 
+            if (hasNoPolicyRecordsOnCurrentTab()) {
+                continue;
+            }
+
             if (clickRecordActionWithJavascript(status, "View", "Open", "Edit", "Review", "Approve", "Details")
                     && waitForQualityPolicyDetail()) {
                 return true;
             }
 
             if (strictStatusMatch) {
+                continue;
+            }
+
+            if (hasNoPolicyRecordsOnCurrentTab()) {
                 continue;
             }
 
@@ -4094,7 +4910,9 @@ public class EasyQQualityPolicyTest {
 
     private boolean isExistingUnderReviewWorkflowOpen() {
         String bodyText = getBodyText();
-        return containsAnyIgnoreCase(bodyText,
+        return !hasNoPolicyRecordsOnCurrentTab()
+                && (isQualityPolicyDetailOpen() || isDocumentActionAreaOpen())
+                && containsAnyIgnoreCase(bodyText,
                 "Current Reviewer", "Next Reviewer", "Due Today", "Reject", "Approve", "Request Changes")
                 && containsAnyIgnoreCase(bodyText, "Quality Policy", "Document", "Evaluation", "Under Review", "Review");
     }
@@ -4103,8 +4921,8 @@ public class EasyQQualityPolicyTest {
         if (latestPolicyTitle == null || latestPolicyTitle.isBlank()) {
             latestPolicyTitle = "Automation Quality Policy " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         }
-        String evaluationText = "Automation evaluation update for " + latestPolicyTitle
-                + ". Dummy content added after Move to Draft for workflow validation.";
+        String evaluationText = uniqueWorkflowText("Move to Draft evaluation for " + latestPolicyTitle,
+                "QP evaluation");
 
         boolean filled = fillControlsByContext(evaluationText,
                 "Evaluation", "Evaluate", "Policy", "Content", "Description", "Objective", "Remarks", "Comment");
@@ -4117,9 +4935,25 @@ public class EasyQQualityPolicyTest {
     }
 
     private void fillReviewRemarks(String action, String roleLabel) {
-        String remarks = roleLabel + " " + action.toLowerCase()
-                + " remarks added by automation on " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String remarks = uniqueWorkflowText(roleLabel + " " + action, "QP "
+                + action.toLowerCase() + " remark");
         fillControlsByContext(remarks, "Add Comments", "Add comment", "Remark", "Comment", "Reason", "Review", "Approval", "Observation");
+    }
+
+    private String uniqueWorkflowText(String stageLabel, String purposeLabel) {
+        dynamicTextSequence++;
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        String sanitizedStage = String.valueOf(stageLabel)
+                .replaceAll("[^A-Za-z0-9 ]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (sanitizedStage.length() > 80) {
+            sanitizedStage = sanitizedStage.substring(0, 80).trim();
+        }
+        String text = purposeLabel + " | " + sanitizedStage
+                + " | " + timestamp
+                + " | seq " + dynamicTextSequence;
+        return text.length() <= 450 ? text : text.substring(0, 450);
     }
 
     private boolean clickPrimaryWorkflowAction(String action) {
@@ -4267,23 +5101,31 @@ public class EasyQQualityPolicyTest {
         Reporter.log("WORKFLOW EXACT: Logging back in as Varun, opening Approved QP, then viewing previous QP in Obsolete.", true);
         loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
 
+        boolean versionHistoryMatched = verifyApprovedVersionHistoryPopupDownloadMatches();
         boolean approvedOpened = waitForApprovedQualityPolicyViewFromVarun();
+        boolean approvedViewOnly = false;
         if (approvedOpened) {
+            approvedViewOnly = verifyCurrentQualityPolicyDetailIsViewModeOnly("Approved");
             openDocumentTab();
             tryDownloadEvidenceAtWorkflowStage("Final-Approved-after-Amit-Approve");
         }
         boolean obsoleteOpened = waitForObsoleteQualityPolicyViewFromVarun();
+        boolean obsoleteViewOnly = obsoleteOpened
+                && verifyCurrentQualityPolicyDetailIsViewModeOnly("Obsolete");
         logDownloadSummary();
-        Reporter.log("WORKFLOW EXACT: Final Varun Approved QP view opened=" + approvedOpened
+        Reporter.log("WORKFLOW EXACT: Final Varun versionHistoryMatched=" + versionHistoryMatched
+                + ", Approved QP view opened=" + approvedOpened
+                + ", approvedViewOnly=" + approvedViewOnly
                 + ", previous Obsolete QP view opened=" + obsoleteOpened
+                + ", obsoleteViewOnly=" + obsoleteViewOnly
                 + ". Visible text: " + shortBodyText(), true);
-        return approvedOpened && obsoleteOpened;
+        return versionHistoryMatched && approvedOpened && approvedViewOnly && obsoleteOpened && obsoleteViewOnly;
     }
 
     private boolean waitForApprovedQualityPolicyViewFromVarun() {
         int maxAttempts = Math.max(3, config.getInt("explicitWait") / 5);
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            navigateToQualityPolicy();
+            openQualityPolicyListFromAnyDetailView();
             boolean opened = openApprovedQualityPolicy();
             boolean approvedViewOpen = opened
                     && pageContainsAny("Approved", "Quality Policy")
@@ -4303,7 +5145,7 @@ public class EasyQQualityPolicyTest {
     private boolean waitForObsoleteQualityPolicyViewFromVarun() {
         int maxAttempts = Math.max(3, config.getInt("explicitWait") / 5);
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            navigateToQualityPolicy();
+            openQualityPolicyListFromAnyDetailView();
             boolean opened = openObsoleteQualityPolicy();
             boolean obsoleteViewOpen = opened
                     && pageContainsAny("Quality Policy")
@@ -4319,6 +5161,192 @@ public class EasyQQualityPolicyTest {
             waitForReflectionDelay();
         }
         return false;
+    }
+
+    private void openQualityPolicyListFromAnyDetailView() {
+        navigateToQualityPolicy();
+        if (isQualityPolicyListOpen()) {
+            return;
+        }
+
+        try {
+            driver.navigate().back();
+            waitForSmallDelay();
+        } catch (RuntimeException ignored) {
+            // Fallback below opens the module from the hamburger/sidebar.
+        }
+
+        if (isQualityPolicyListOpen()) {
+            return;
+        }
+
+        if (openQualityPolicyListRouteDirectly()) {
+            return;
+        }
+
+        try {
+            HamburgerNavigationHelper.openModule(driver, wait, qualityPolicyTitle, "Quality Policy",
+                    "quality\\s*policy|quality-policy|qualitypolicy", false);
+            waitForQualityPolicyPage();
+        } catch (RuntimeException ignored) {
+            // The caller's attempt logging will report the visible page state.
+        }
+    }
+
+    private boolean isQualityPolicyListOpen() {
+        String url = safeCurrentUrl().toLowerCase(Locale.ROOT);
+        if (url.contains("/view") || url.contains("/edit") || url.contains("/review") || url.contains("/approval")) {
+            return false;
+        }
+        return containsAnyIgnoreCase(getBodyText(), "Draft", "Under Review", "Approved", "Obsolete")
+                && containsAnyIgnoreCase(getBodyText(), "Quality Policy");
+    }
+
+    private boolean openQualityPolicyListRouteDirectly() {
+        String appRoot = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        String[] qualityPolicyRoutes = {"quality_policy", "quality-policy", "qualitypolicy"};
+        for (String route : qualityPolicyRoutes) {
+            try {
+                driver.get(appRoot + route);
+                waitForSmallDelay();
+                waitForQualityPolicyTabs();
+                if (isQualityPolicyListOpen()) {
+                    Reporter.log("WORKFLOW EXACT: Opened QP list directly using route: " + route, true);
+                    return true;
+                }
+            } catch (RuntimeException ignored) {
+                // Try next route spelling.
+            }
+        }
+        return false;
+    }
+
+    private boolean verifyApprovedAndObsoleteSectionsAreViewModeOnly() {
+        loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+
+        boolean approvedOpened = waitForApprovedQualityPolicyViewFromVarun();
+        boolean approvedViewOnly = approvedOpened
+                && verifyCurrentQualityPolicyDetailIsViewModeOnly("Approved");
+
+        boolean obsoleteOpened = waitForObsoleteQualityPolicyViewFromVarun();
+        boolean obsoleteViewOnly = obsoleteOpened
+                && verifyCurrentQualityPolicyDetailIsViewModeOnly("Obsolete");
+
+        Reporter.log("VIEW MODE: Approved opened=" + approvedOpened
+                + ", approvedViewOnly=" + approvedViewOnly
+                + ", obsoleteOpened=" + obsoleteOpened
+                + ", obsoleteViewOnly=" + obsoleteViewOnly, true);
+        return approvedOpened && approvedViewOnly && obsoleteOpened && obsoleteViewOnly;
+    }
+
+    private boolean verifyCurrentQualityPolicyDetailIsViewModeOnly(String statusLabel) {
+        boolean evaluationOpened = openEvaluationTab();
+        boolean evaluationViewOnly = evaluationOpened
+                && verifyCurrentTabHasNoEditableDataControls(statusLabel + " Evaluation", false);
+
+        boolean documentOpened = openDocumentTab();
+        boolean documentInformationViewOnly = documentOpened
+                && verifyCurrentTabHasNoEditableDataControls(statusLabel + " Document Information", true);
+
+        Reporter.log("VIEW MODE: " + statusLabel
+                + " evaluationOpened=" + evaluationOpened
+                + ", evaluationViewOnly=" + evaluationViewOnly
+                + ", documentOpened=" + documentOpened
+                + ", documentInformationViewOnly=" + documentInformationViewOnly, true);
+        return evaluationOpened && evaluationViewOnly && documentOpened && documentInformationViewOnly;
+    }
+
+    private boolean verifyCurrentTabHasNoEditableDataControls(String sectionLabel, boolean requireDocumentInformation) {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const requireDocumentInformation = Boolean(arguments[0]);
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none'
+                                && Number(style.opacity || '1') > 0;
+                            };
+                            const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const textOf = el => normalize((el && (el.innerText || el.textContent || '')) + ' '
+                              + ((el && el.getAttribute && el.getAttribute('aria-label')) || '') + ' '
+                              + ((el && el.getAttribute && el.getAttribute('title')) || '') + ' '
+                              + ((el && el.getAttribute && el.getAttribute('placeholder')) || ''));
+                            const inAppChrome = el => !!el.closest(
+                              'nav, header, [class*=sidebar], [class*=Sidebar], [class*=menu], [class*=Menu]'
+                            );
+                            const inTransientDialog = el => !!el.closest(
+                              '[role=dialog], .modal, .dialog, .overlay, .drawer, .cdk-overlay-pane, .mat-dialog-container'
+                            );
+                            const isReadonlyInput = el => {
+                              if (el.disabled || el.readOnly || el.getAttribute('readonly') !== null) return true;
+                              if (String(el.getAttribute('aria-readonly') || '').toLowerCase() === 'true') return true;
+                              if (String(el.getAttribute('contenteditable') || '').toLowerCase() === 'false') return true;
+                              return false;
+                            };
+                            const editableControls = Array.from(document.querySelectorAll(
+                              'input:not([type=hidden]):not([type=file]), textarea, select, [contenteditable=true], .ql-editor[contenteditable=true]'
+                            )).filter(visible).filter(el => !inAppChrome(el) && !inTransientDialog(el))
+                              .filter(el => !isReadonlyInput(el))
+                              .filter(el => {
+                                const type = String(el.getAttribute('type') || '').toLowerCase();
+                                if (['button', 'submit', 'reset', 'checkbox', 'radio'].includes(type)) return false;
+                                return true;
+                              }).map(el => {
+                                const rect = el.getBoundingClientRect();
+                                return textOf(el.closest('label, div, section, article, aside') || el)
+                                  + '@' + Math.round(rect.left) + ',' + Math.round(rect.top);
+                              });
+
+                            const blockedActionLabels = [
+                              'save',
+                              'save draft',
+                              'save as draft',
+                              'send for review',
+                              'send to review',
+                              'start editing',
+                              'submit',
+                              'update',
+                              'approve',
+                              'reject'
+                            ];
+                            const editActions = Array.from(document.querySelectorAll(
+                              'button,a,[role=button],input[type=button],input[type=submit]'
+                            )).filter(visible).filter(el => !inAppChrome(el) && !inTransientDialog(el))
+                              .filter(el => {
+                                const text = textOf(el);
+                                if (!text) return false;
+                                if (text.includes('download') || text.includes('comment') || text.includes('move to draft')) return false;
+                                return blockedActionLabels.some(label => text === label || text.includes(label));
+                              }).map(el => textOf(el));
+
+                            const pageText = normalize(document.body ? document.body.innerText || document.body.textContent || '' : '');
+                            const documentInformationPresent = !requireDocumentInformation
+                              || pageText.includes('document information')
+                              || (pageText.includes('status') && pageText.includes('author'))
+                              || (pageText.includes('reviewer') && pageText.includes('approver'));
+                            const passed = editableControls.length === 0
+                              && editActions.length === 0
+                              && documentInformationPresent;
+                            return (passed ? 'PASS' : 'FAIL')
+                              + '|editableControls=' + editableControls.length
+                              + '|editActions=' + editActions.length
+                              + '|documentInformation=' + documentInformationPresent
+                              + '|editableDetails=' + editableControls.slice(0, 5).join(' || ')
+                              + '|actionDetails=' + editActions.slice(0, 5).join(' || ');
+                            """,
+                    requireDocumentInformation);
+            String inspection = String.valueOf(result);
+            boolean passed = inspection.startsWith("PASS");
+            Reporter.log("VIEW MODE: " + sectionLabel + " inspection=" + inspection, true);
+            return passed;
+        } catch (RuntimeException exception) {
+            Reporter.log("VIEW MODE: " + sectionLabel + " inspection failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
     }
 
     private boolean openObsoleteQualityPolicy() {
@@ -4813,6 +5841,14 @@ public class EasyQQualityPolicyTest {
         return isOnQualityPolicyModule()
                 && containsAnyIgnoreCase(bodyText, "No Pending Items", "No Data", "No Records", "No record")
                 && containsAnyIgnoreCase(bodyText, "Quality Policy", "Draft", "Under Review", "Approved", "Obsolete");
+    }
+
+    private boolean hasNoPolicyRecordsOnCurrentTab() {
+        String bodyText = getBodyText();
+        return isOnQualityPolicyModule()
+                && containsAnyIgnoreCase(bodyText, "No Pending Items", "No Data", "No Records", "No record")
+                && !containsAnyIgnoreCase(bodyText, "View Quality Policy", "Move to Draft", "Document Information",
+                "What is the change", "Why is the change", "Reviewer 1", "Reviewer 2", "Approver");
     }
 
     private boolean workflowPreconditionHandled(String reason) {

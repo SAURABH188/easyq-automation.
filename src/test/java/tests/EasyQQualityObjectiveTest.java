@@ -323,7 +323,21 @@ public class EasyQQualityObjectiveTest extends EasyQModuleWorkflowBase {
     @Test(priority = 41, description = "PDF Flow - Verify Quality Objective reject and approve workflow for all reviewers and approver")
     // Manual Test Case ID: TC423-TC433
     public void verifyPdfFlowQualityObjectiveRejectThenApproveFullWorkflow() {
-        Assert.assertTrue(runApprovalPath(true),
-                "Quality Objective should verify rejection for Reviewer 1, Reviewer 2, and Approver before final approval");
+        Assert.assertTrue(runApprovalPath(true) && verifyModulePostApprovalEvidence(),
+                "Quality Objective should verify rejection for Reviewer 1, Reviewer 2, and Approver before final approval, then verify approved/obsolete evidence");
+    }
+
+    @Test(priority = 42, description = "PDF Flow - Verify Quality Objective version history popup download matches popup data")
+    // Manual Test Case ID: TC431-TC433
+    public void verifyQualityObjectiveVersionHistoryPopupDownloadMatchesPopupData() {
+        Assert.assertTrue(verifyModuleVersionHistoryPopupDownloadMatches(),
+                "Quality Objective version history popup data should match downloaded Word version history file");
+    }
+
+    @Test(priority = 43, description = "PDF Flow - Verify Approved and Obsolete Quality Objective records are view-only")
+    // Manual Test Case ID: TC431-TC433
+    public void verifyApprovedAndObsoleteQualityObjectiveRecordsAreViewOnly() {
+        Assert.assertTrue(verifyApprovedAndObsoleteModuleRecordsAreViewOnly(),
+                "Approved and Obsolete Quality Objective records should be view-only for Evaluation and Document Information");
     }
 }
