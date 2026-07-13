@@ -45,6 +45,7 @@ public class ActionHelper {
 
     public void click(By locator) {
         WebElement element = waitForClickable(locator);
+        pauseForObservation();
         try {
             element.click();
         } catch (RuntimeException exception) {
@@ -55,25 +56,30 @@ public class ActionHelper {
 
     public void type(By locator, String value) {
         WebElement element = waitForVisible(locator);
+        pauseForObservation();
         element.sendKeys(value);
         afterAction();
     }
 
     public void clearAndType(By locator, String value) {
         WebElement element = waitForVisible(locator);
+        pauseForObservation();
         element.clear();
+        pauseForObservation();
         element.sendKeys(value);
         afterAction();
     }
 
     public void pressEnter(By locator) {
         WebElement element = waitForVisible(locator);
+        pauseForObservation();
         element.sendKeys(Keys.ENTER);
         afterAction();
     }
 
     public void pressTab(By locator) {
         WebElement element = waitForVisible(locator);
+        pauseForObservation();
         element.sendKeys(Keys.TAB);
         afterAction();
     }

@@ -319,4 +319,11 @@ public class EasyQQualityObjectiveTest extends EasyQModuleWorkflowBase {
         Assert.assertTrue(moveApprovedToDraftAndUpdateContent(),
                 "Move to Draft should create a new Quality Objective version");
     }
+
+    @Test(priority = 41, description = "PDF Flow - Verify Quality Objective reject and approve workflow for all reviewers and approver")
+    // Manual Test Case ID: TC423-TC433
+    public void verifyPdfFlowQualityObjectiveRejectThenApproveFullWorkflow() {
+        Assert.assertTrue(runApprovalPath(true),
+                "Quality Objective should verify rejection for Reviewer 1, Reviewer 2, and Approver before final approval");
+    }
 }

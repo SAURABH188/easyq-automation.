@@ -50,6 +50,7 @@ public final class HamburgerNavigationHelper {
             }
             try {
                 scrollIntoView(driver, element);
+                waitForSmallDelay(pauseForObservation);
                 safeClick(driver, element);
                 waitForSmallDelay(pauseForObservation);
                 return;
@@ -59,6 +60,7 @@ public final class HamburgerNavigationHelper {
         }
 
         try {
+            waitForSmallDelay(pauseForObservation);
             Object clicked = ((JavascriptExecutor) driver).executeScript(
                     "const visible = el => {"
                             + "  const r = el.getBoundingClientRect();"
@@ -95,6 +97,7 @@ public final class HamburgerNavigationHelper {
     private static boolean clickModuleInsideNavigationRoots(WebDriver driver, String menuRegex, boolean pauseForObservation) {
         Reporter.log("NAV: Clicking module inside hamburger/sidebar menu.", true);
         try {
+            waitForSmallDelay(pauseForObservation);
             Object clicked = ((JavascriptExecutor) driver).executeScript(
                     "const pattern = new RegExp(arguments[0], 'i');"
                             + "const visible = el => {"

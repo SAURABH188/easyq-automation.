@@ -68,6 +68,7 @@ public final class DynamicWorkflowHelper {
                 if (safeIsDisplayed(element) && safeIsEnabled(element)) {
                     scrollIntoView(driver, element);
                     highlight(driver, element);
+                    pauseForObservation();
                     element.click();
                     waitForStablePage(driver, 10);
                     pauseForObservation();
@@ -107,7 +108,9 @@ public final class DynamicWorkflowHelper {
             if (safeIsDisplayed(element) && safeIsEnabled(element)) {
                 scrollIntoView(driver, element);
                 highlight(driver, element);
+                pauseForObservation();
                 element.clear();
+                pauseForObservation();
                 element.sendKeys(value);
                 pauseForObservation();
                 return;

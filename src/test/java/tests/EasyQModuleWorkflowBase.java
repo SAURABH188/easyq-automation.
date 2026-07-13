@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Locale;
 
 public abstract class EasyQModuleWorkflowBase {
+    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_REJECT_REVIEWERS_AND_APPROVER_2026_07_11_A";
+
     protected WebDriver driver;
     protected WebDriverWait wait;
     protected final ConfigReader config = new ConfigReader();
@@ -257,6 +259,8 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     protected boolean runApprovalPath(boolean rejectFirst) {
+        Reporter.log("WORKFLOW EXACT: " + moduleLabel() + " workflow code version = "
+                + MODULE_WORKFLOW_CODE_VERSION, true);
         loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
         navigateToModule();
 
@@ -275,8 +279,7 @@ public abstract class EasyQModuleWorkflowBase {
             }
 
             loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
-            navigateToModule();
-            if (!ensureUnderReviewFromApprovedOrExistingDraft()) {
+            if (!resubmitRejectedDraftFromVarunAccount("Reviewer 1 reject")) {
                 return false;
             }
         }
@@ -286,18 +289,111 @@ public abstract class EasyQModuleWorkflowBase {
                 reviewer1Password(),
                 "Reviewer 1",
                 "Approve");
+        if (!reviewer1Done) {
+            return false;
+        }
+
+        if (rejectFirst) {
+            boolean reviewer2Rejected = performWorkflowAction(
+                    workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
+                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    "Reviewer 2",
+                    "Reject");
+            if (!reviewer2Rejected) {
+                return false;
+            }
+
+            loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
+            if (!resubmitRejectedDraftFromVarunAccount("Reviewer 2 reject")) {
+                return false;
+            }
+
+            reviewer1Done = performWorkflowAction(
+                    workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
+                    reviewer1Password(),
+                    "Reviewer 1 after Reviewer 2 reject",
+                    "Approve");
+            if (!reviewer1Done) {
+                return false;
+            }
+        }
+
         boolean reviewer2Done = performWorkflowAction(
                 workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
                 requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
                 "Reviewer 2",
                 "Approve");
+        if (!reviewer2Done) {
+            return false;
+        }
+
+        if (rejectFirst) {
+            boolean approverRejected = performWorkflowAction(
+                    workflowUserName("APPROVER_USERNAME", configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "")),
+                    requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                    "Approver",
+                    "Reject");
+            if (!approverRejected) {
+                return false;
+            }
+
+            loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
+            if (!resubmitRejectedDraftFromVarunAccount("Approver reject")) {
+                return false;
+            }
+
+            reviewer1Done = performWorkflowAction(
+                    workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
+                    reviewer1Password(),
+                    "Reviewer 1 after Approver reject",
+                    "Approve");
+            if (!reviewer1Done) {
+                return false;
+            }
+
+            reviewer2Done = performWorkflowAction(
+                    workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
+                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    "Reviewer 2 after Approver reject",
+                    "Approve");
+            if (!reviewer2Done) {
+                return false;
+            }
+        }
+
         boolean approverDone = performWorkflowAction(
                 workflowUserName("APPROVER_USERNAME", configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "")),
                 requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
-                "Approver",
+                rejectFirst ? "Approver final approval" : "Approver",
                 "Approve");
 
         return reviewer1Done && reviewer2Done && approverDone;
+    }
+
+    private boolean resubmitRejectedDraftFromVarunAccount(String sourceStage) {
+        Reporter.log("WORKFLOW EXACT: " + moduleLabel() + " " + sourceStage
+                + " completed. Opening Draft/Returned record, updating data, and sending again to Varun/Pavan/Amit.",
+                true);
+        navigateToModule();
+
+        if (!openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested")) {
+            Reporter.log("WORKFLOW EXACT: " + moduleLabel()
+                    + " rejected record was expected in Draft/Returned state but was not opened. Visible text: "
+                    + shortBodyText(), true);
+            return false;
+        }
+
+        fillModuleFormWithAutomationData();
+        boolean saved = clickButtonByText("Save as Draft", "Save Draft", "Save", "Update", "Done")
+                || pageContainsAny("Draft", "Saved", moduleLabel(), latestRecordTitle());
+        if (!saved) {
+            Reporter.log("WORKFLOW EXACT: " + moduleLabel()
+                    + " Draft/Returned record opened but could not be saved before resubmission. Visible text: "
+                    + shortBodyText(), true);
+            return false;
+        }
+
+        return submitCurrentDraftForReviewWithConfiguredUsers();
     }
 
     protected boolean assigneeCannotInitiate() {
