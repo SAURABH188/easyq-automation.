@@ -43,7 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_APPROVED_OBSOLETE_VIEW_ONLY_2026_07_13_AO";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_OWNER_RECOVERY_2026_07_13_AP";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -53,6 +53,7 @@ public class EasyQQualityPolicyTest {
     private Path downloadDirectory;
     private String setupFailureMessage;
     private boolean qualityPolicyDraftCreatedInCurrentTest;
+    private String workflowResumeStage;
     private long actionWaitMillis = DEFAULT_ACTION_WAIT_MILLIS;
     private int dynamicTextSequence;
     private final Set<String> failedDownloadStages = new LinkedHashSet<>();
@@ -101,6 +102,7 @@ public class EasyQQualityPolicyTest {
         prepareDownloadDirectory();
         setupFailureMessage = null;
         qualityPolicyDraftCreatedInCurrentTest = false;
+        workflowResumeStage = null;
         failedDownloadStages.clear();
 
         for (int attempt = 1; attempt <= 2; attempt++) {
@@ -774,6 +776,7 @@ public class EasyQQualityPolicyTest {
 
         if (openUnderReviewQualityPolicyTask()) {
             Reporter.log("WORKFLOW EXACT: Existing Under Review QP is available; no new draft will be created.", true);
+            workflowResumeStage = "REVIEWER1";
             return true;
         }
 
@@ -783,7 +786,11 @@ public class EasyQQualityPolicyTest {
             if (!updateCurrentDraftEvaluationFromPdfFlow()) {
                 return false;
             }
-            return submitCurrentDraftForReviewWithConfiguredUsers();
+            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
+            if (submitted) {
+                workflowResumeStage = "REVIEWER1";
+            }
+            return submitted;
         }
 
         if (qualityPolicyDraftCreatedInCurrentTest) {
@@ -792,7 +799,15 @@ public class EasyQQualityPolicyTest {
         }
 
         if (createDraftFromApprovedQualityPolicy()) {
-            return submitCurrentDraftForReviewWithConfiguredUsers();
+            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
+            if (submitted) {
+                workflowResumeStage = "REVIEWER1";
+            }
+            return submitted;
+        }
+
+        if (recoverExistingQualityPolicyAcrossWorkflowUsers()) {
+            return true;
         }
 
         Reporter.log("WORKFLOW EXACT: Approved QP start path failed. Not switching to Draft/Under Review fallback.", true);
@@ -832,13 +847,220 @@ public class EasyQQualityPolicyTest {
         }
         if (!confirmMoveToDraftPrompt()) {
             Reporter.log("WORKFLOW EXACT: Move to Draft was clicked, but Draft state was not confirmed. "
-                    + "Stopping before reviewer assignment. Visible text: " + shortBodyText(), true);
-            return false;
+                    + "Searching existing Draft/Under Review QP across workflow users. Visible text: "
+                    + shortBodyText(), true);
+            return recoverExistingQualityPolicyAcrossWorkflowUsers();
         }
         qualityPolicyDraftCreatedInCurrentTest = true;
         waitForPageToContain("Draft", "Evaluation", "Document", "Save");
 
         return updateCurrentDraftEvaluationFromPdfFlow();
+    }
+
+    private boolean recoverExistingQualityPolicyAcrossWorkflowUsers() {
+        Reporter.log("WORKFLOW RECOVERY: Searching existing QP owner from Dashboard All Tasks and configured users.", true);
+
+        String dashboardStage = detectPendingQualityPolicyStageFromDashboardAllTasks();
+        if (dashboardStage != null && tryOpenPendingQualityPolicyForStage(dashboardStage)) {
+            Reporter.log("WORKFLOW RECOVERY: Resuming QP from dashboard detected stage=" + dashboardStage, true);
+            return true;
+        }
+
+        if (tryOpenInitiatorDraftAndSendForReview()) {
+            return true;
+        }
+
+        for (String stage : new String[]{"REVIEWER1", "REVIEWER2", "APPROVER"}) {
+            if (stage.equals(dashboardStage)) {
+                continue;
+            }
+            if (tryOpenPendingQualityPolicyForStage(stage)) {
+                Reporter.log("WORKFLOW RECOVERY: Resuming QP after direct user search. stage=" + stage, true);
+                return true;
+            }
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: No existing Draft/Under Review QP was found for Varun, Pavan, or Amit.", true);
+        return false;
+    }
+
+    private boolean tryOpenInitiatorDraftAndSendForReview() {
+        Reporter.log("WORKFLOW RECOVERY: Checking Varun initiator Draft tab for existing QP draft.", true);
+        loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+        if (!openDraftOrReturnedQualityPolicyFromDraftTabOnly()) {
+            return false;
+        }
+        if (!updateCurrentDraftEvaluationFromPdfFlow()) {
+            return false;
+        }
+        boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
+        if (submitted) {
+            workflowResumeStage = "REVIEWER1";
+        }
+        return submitted;
+    }
+
+    private boolean tryOpenPendingQualityPolicyForStage(String stage) {
+        WorkflowUser workflowUser = workflowUserForStage(stage);
+        if (workflowUser == null) {
+            return false;
+        }
+        Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
+                + " account for pending Under Review QP.", true);
+        loginAsConfiguredUser(workflowUser.username, workflowUser.password);
+        navigateToQualityPolicy();
+        if (openUnderReviewQualityPolicyTask()) {
+            workflowResumeStage = stage;
+            Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
+                    + ". stage=" + stage, true);
+            return true;
+        }
+        return false;
+    }
+
+    private WorkflowUser workflowUserForStage(String stage) {
+        if ("REVIEWER1".equals(stage)) {
+            return new WorkflowUser(
+                    configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
+                    reviewer1Password(),
+                    "Reviewer 1 Varun");
+        }
+        if ("REVIEWER2".equals(stage)) {
+            return new WorkflowUser(
+                    configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
+                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    "Reviewer 2 Pavan");
+        }
+        if ("APPROVER".equals(stage)) {
+            return new WorkflowUser(
+                    configValue("EASYQ_QP_APPROVER_USERNAME", config.get("EASYQ_ASSIGNEE_AMIT_USERNAME")),
+                    requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                    "Approver Amit Karane");
+        }
+        return null;
+    }
+
+    private String detectPendingQualityPolicyStageFromDashboardAllTasks() {
+        try {
+            loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+            openDashboard();
+            clickDashboardAllTasksToggle();
+            String cardText = dashboardQualityPolicyCardText();
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget text="
+                    + cardText.replaceAll("\\s+", " ").trim(), true);
+            return stageFromQualityPolicyOwnerText(cardText);
+        } catch (RuntimeException exception) {
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks inspection failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return null;
+        }
+    }
+
+    private void openDashboard() {
+        String appRoot = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        driver.get(appRoot + "dashboard");
+        waitForPageToContain("Dashboard", "QMS Status", "All Tasks", "My Tasks");
+        waitForSmallDelay();
+    }
+
+    private void clickDashboardAllTasksToggle() {
+        try {
+            Object clicked = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el.innerText || el.textContent || '')
+                              .replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const allTasks = Array.from(document.querySelectorAll('button,a,[role=button],div,span'))
+                              .filter(visible)
+                              .find(el => textOf(el) === 'all tasks');
+                            if (!allTasks) return false;
+                            const target = allTasks.closest('button,a,[role=button]') || allTasks;
+                            target.click();
+                            return true;
+                            """);
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks click result=" + clicked, true);
+        } catch (RuntimeException ignored) {
+            clickButtonByText("All Tasks");
+        }
+        waitForSmallDelay();
+    }
+
+    private String dashboardQualityPolicyCardText() {
+        try {
+            Object text = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+                            const candidates = Array.from(document.querySelectorAll('section, article, div, li'))
+                              .filter(visible)
+                              .filter(el => textOf(el).toLowerCase().includes('quality policy'))
+                              .map(el => {
+                                const rect = el.getBoundingClientRect();
+                                const text = textOf(el);
+                                let score = 0;
+                                if (/^quality policy/i.test(text)) score += 100;
+                                if (text.toLowerCase().includes('current reviewer')) score += 90;
+                                if (text.toLowerCase().includes('approver')) score += 50;
+                                if (text.toLowerCase().includes('view')) score += 20;
+                                score -= Math.min(120, text.length / 4);
+                                score -= Math.min(80, (rect.width * rect.height) / 6000);
+                                return {text, score};
+                              })
+                              .sort((a, b) => b.score - a.score);
+                            return candidates.length ? candidates[0].text : '';
+                            """);
+            return String.valueOf(text);
+        } catch (RuntimeException exception) {
+            return "";
+        }
+    }
+
+    private String stageFromQualityPolicyOwnerText(String cardText) {
+        String normalizedText = String.valueOf(cardText).replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+        if (normalizedText.isBlank() || normalizedText.contains("no pending items")) {
+            return null;
+        }
+        String currentReviewer = "";
+        Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s+([a-z ]+?)(?:\\s+approver|\\s+due|\\s+\\d|$)")
+                .matcher(normalizedText);
+        if (currentReviewerMatcher.find()) {
+            currentReviewer = currentReviewerMatcher.group(1).trim();
+        }
+        String ownerText = currentReviewer.isBlank() ? normalizedText : currentReviewer;
+        if (ownerText.contains("amit")) {
+            return "APPROVER";
+        }
+        if (ownerText.contains("pavan")) {
+            return "REVIEWER2";
+        }
+        if (ownerText.contains("varun")) {
+            return "REVIEWER1";
+        }
+        return null;
+    }
+
+    private static final class WorkflowUser {
+        private final String username;
+        private final String password;
+        private final String roleLabel;
+
+        private WorkflowUser(String username, String password, String roleLabel) {
+            this.username = username;
+            this.password = password;
+            this.roleLabel = roleLabel;
+        }
     }
 
     private boolean createInitialV0QualityPolicyDraft() {
@@ -3248,7 +3470,15 @@ public class EasyQQualityPolicyTest {
             return true;
         }
 
-        if (rejectFirst) {
+        String resumeStage = workflowResumeStage == null || workflowResumeStage.isBlank()
+                ? "REVIEWER1"
+                : workflowResumeStage;
+        Reporter.log("WORKFLOW EXACT: Continuing QP workflow from detected stage=" + resumeStage, true);
+
+        boolean reviewer1Approved = false;
+        boolean reviewer2Approved = false;
+
+        if ("REVIEWER1".equals(resumeStage) && rejectFirst) {
             boolean rejected = performConfiguredWorkflowAction(
                     configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
                     reviewer1Password(),
@@ -3265,16 +3495,20 @@ public class EasyQQualityPolicyTest {
             }
         }
 
-        boolean reviewer1Approved = performConfiguredWorkflowAction(
-                configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
-                reviewer1Password(),
-                "Approve",
-                "Reviewer 1 Varun");
-        if (!reviewer1Approved) {
-            return false;
+        if ("REVIEWER1".equals(resumeStage)) {
+            reviewer1Approved = performConfiguredWorkflowAction(
+                    configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
+                    reviewer1Password(),
+                    "Approve",
+                    "Reviewer 1 Varun");
+            if (!reviewer1Approved) {
+                return false;
+            }
+        } else {
+            reviewer1Approved = true;
         }
 
-        if (rejectFirst) {
+        if (("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage)) && rejectFirst) {
             boolean reviewer2Rejected = performConfiguredWorkflowAction(
                     configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
                     requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
@@ -3294,13 +3528,17 @@ public class EasyQQualityPolicyTest {
             }
         }
 
-        boolean reviewer2Approved = performConfiguredWorkflowAction(
-                configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
-                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                "Approve",
-                "Reviewer 2 Pavan");
-        if (!reviewer2Approved) {
-            return false;
+        if ("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage)) {
+            reviewer2Approved = performConfiguredWorkflowAction(
+                    configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
+                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    "Approve",
+                    "Reviewer 2 Pavan");
+            if (!reviewer2Approved) {
+                return false;
+            }
+        } else {
+            reviewer2Approved = true;
         }
 
         if (rejectFirst) {
