@@ -43,7 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_ALL_TASKS_WAIT_2026_07_13_AR";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DOCUMENT_INFO_ROLE_MAPPING_2026_07_13_AS";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -54,6 +54,11 @@ public class EasyQQualityPolicyTest {
     private String setupFailureMessage;
     private boolean qualityPolicyDraftCreatedInCurrentTest;
     private String workflowResumeStage;
+    private WorkflowUser activeAuthorUser;
+    private WorkflowUser activeReviewer1User;
+    private WorkflowUser activeReviewer2User;
+    private WorkflowUser activeApproverUser;
+    private boolean workflowParticipantsResolvedFromDocumentInformation;
     private long actionWaitMillis = DEFAULT_ACTION_WAIT_MILLIS;
     private int dynamicTextSequence;
     private final Set<String> failedDownloadStages = new LinkedHashSet<>();
@@ -103,6 +108,11 @@ public class EasyQQualityPolicyTest {
         setupFailureMessage = null;
         qualityPolicyDraftCreatedInCurrentTest = false;
         workflowResumeStage = null;
+        activeAuthorUser = null;
+        activeReviewer1User = null;
+        activeReviewer2User = null;
+        activeApproverUser = null;
+        workflowParticipantsResolvedFromDocumentInformation = false;
         failedDownloadStages.clear();
 
         for (int attempt = 1; attempt <= 2; attempt++) {
@@ -824,25 +834,25 @@ public class EasyQQualityPolicyTest {
     }
 
     private Boolean tryResumeQualityPolicyFromDashboardAllTasksFirst() {
-        String dashboardStage = detectPendingQualityPolicyStageFromDashboardAllTasks();
-        if (dashboardStage == null) {
+        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+        if (dashboardOwner == null) {
             Reporter.log("WORKFLOW RECOVERY: No pending QP owner found in Dashboard All Tasks widget.", true);
             return null;
         }
 
-        Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks detected QP stage=" + dashboardStage
-                + ". Opening corresponding user account before normal draft creation.", true);
-        if (tryOpenPendingQualityPolicyForStage(dashboardStage)) {
+        Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks detected current QP owner="
+                + dashboardOwner.roleLabel + ". Opening that account before normal draft creation.", true);
+        if (tryOpenPendingQualityPolicyForUser(dashboardOwner)) {
             return true;
         }
 
-        Reporter.log("WORKFLOW RECOVERY: Dashboard showed QP stage=" + dashboardStage
+        Reporter.log("WORKFLOW RECOVERY: Dashboard showed QP owner=" + dashboardOwner.roleLabel
                 + " but task did not open for that user. Checking other configured workflow users.", true);
-        for (String stage : new String[]{"REVIEWER1", "REVIEWER2", "APPROVER"}) {
-            if (stage.equals(dashboardStage)) {
+        for (WorkflowUser user : knownWorkflowUsers()) {
+            if (sameWorkflowUser(user, dashboardOwner)) {
                 continue;
             }
-            if (tryOpenPendingQualityPolicyForStage(stage)) {
+            if (tryOpenPendingQualityPolicyForUser(user)) {
                 return true;
             }
         }
@@ -898,9 +908,10 @@ public class EasyQQualityPolicyTest {
     private boolean recoverExistingQualityPolicyAcrossWorkflowUsers() {
         Reporter.log("WORKFLOW RECOVERY: Searching existing QP owner from Dashboard All Tasks and configured users.", true);
 
-        String dashboardStage = detectPendingQualityPolicyStageFromDashboardAllTasks();
-        if (dashboardStage != null && tryOpenPendingQualityPolicyForStage(dashboardStage)) {
-            Reporter.log("WORKFLOW RECOVERY: Resuming QP from dashboard detected stage=" + dashboardStage, true);
+        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+        if (dashboardOwner != null && tryOpenPendingQualityPolicyForUser(dashboardOwner)) {
+            Reporter.log("WORKFLOW RECOVERY: Resuming QP from dashboard detected owner="
+                    + dashboardOwner.roleLabel, true);
             return true;
         }
 
@@ -908,12 +919,13 @@ public class EasyQQualityPolicyTest {
             return true;
         }
 
-        for (String stage : new String[]{"REVIEWER1", "REVIEWER2", "APPROVER"}) {
-            if (stage.equals(dashboardStage)) {
+        for (WorkflowUser user : knownWorkflowUsers()) {
+            if (dashboardOwner != null && sameWorkflowUser(user, dashboardOwner)) {
                 continue;
             }
-            if (tryOpenPendingQualityPolicyForStage(stage)) {
-                Reporter.log("WORKFLOW RECOVERY: Resuming QP after direct user search. stage=" + stage, true);
+            if (tryOpenPendingQualityPolicyForUser(user)) {
+                Reporter.log("WORKFLOW RECOVERY: Resuming QP after direct user search. owner="
+                        + user.roleLabel + ", resolvedStage=" + workflowResumeStage, true);
                 return true;
             }
         }
@@ -948,37 +960,87 @@ public class EasyQQualityPolicyTest {
         loginAsConfiguredUser(workflowUser.username, workflowUser.password);
         navigateToQualityPolicy();
         if (openUnderReviewQualityPolicyTask()) {
-            workflowResumeStage = stage;
+            String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
+            workflowResumeStage = resolvedStage == null ? stage : resolvedStage;
             Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
-                    + ". stage=" + stage, true);
+                    + ". configuredStage=" + stage + ", resolvedStage=" + workflowResumeStage, true);
             return true;
         }
         return false;
     }
 
+    private boolean tryOpenPendingQualityPolicyForUser(WorkflowUser workflowUser) {
+        if (workflowUser == null) {
+            return false;
+        }
+        Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
+                + " account for pending Under Review QP.", true);
+        loginAsConfiguredUser(workflowUser.username, workflowUser.password);
+        navigateToQualityPolicy();
+        if (!openUnderReviewQualityPolicyTask()) {
+            return false;
+        }
+        String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
+        if (resolvedStage == null) {
+            Reporter.log("WORKFLOW RECOVERY: QP opened for " + workflowUser.roleLabel
+                    + " but Document Information did not identify this user's reviewer/approver role. "
+                    + "Visible text: " + shortBodyText(), true);
+            return false;
+        }
+        workflowResumeStage = resolvedStage;
+        Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
+                + ". Document Information resolved stage=" + workflowResumeStage, true);
+        return true;
+    }
+
     private WorkflowUser workflowUserForStage(String stage) {
+        if ("REVIEWER1".equals(stage)) {
+            if (activeReviewer1User != null) {
+                return activeReviewer1User;
+            }
+            return workflowParticipantsResolvedFromDocumentInformation ? null : configuredWorkflowUserForStage(stage);
+        }
+        if ("REVIEWER2".equals(stage)) {
+            if (activeReviewer2User != null) {
+                return activeReviewer2User;
+            }
+            return workflowParticipantsResolvedFromDocumentInformation ? null : configuredWorkflowUserForStage(stage);
+        }
+        if ("APPROVER".equals(stage)) {
+            if (activeApproverUser != null) {
+                return activeApproverUser;
+            }
+            return workflowParticipantsResolvedFromDocumentInformation ? null : configuredWorkflowUserForStage(stage);
+        }
+        return null;
+    }
+
+    private WorkflowUser configuredWorkflowUserForStage(String stage) {
         if ("REVIEWER1".equals(stage)) {
             return new WorkflowUser(
                     configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
                     reviewer1Password(),
-                    "Reviewer 1 Varun");
+                    "Reviewer 1 Varun",
+                    "varun", "varun trivedi");
         }
         if ("REVIEWER2".equals(stage)) {
             return new WorkflowUser(
                     configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
                     requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                    "Reviewer 2 Pavan");
+                    "Reviewer 2 Pavan",
+                    "pavan", "pavan prabhu");
         }
         if ("APPROVER".equals(stage)) {
             return new WorkflowUser(
                     configValue("EASYQ_QP_APPROVER_USERNAME", config.get("EASYQ_ASSIGNEE_AMIT_USERNAME")),
                     requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
-                    "Approver Amit Karane");
+                    "Approver Amit Karane",
+                    "amit", "amit karane");
         }
         return null;
     }
 
-    private String detectPendingQualityPolicyStageFromDashboardAllTasks() {
+    private WorkflowUser detectPendingQualityPolicyOwnerFromDashboardAllTasks() {
         try {
             loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
             openDashboard();
@@ -986,7 +1048,7 @@ public class EasyQQualityPolicyTest {
             String cardText = waitForDashboardAllTasksQualityPolicyDetails();
             Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget text="
                     + cardText.replaceAll("\\s+", " ").trim(), true);
-            return stageFromQualityPolicyOwnerText(cardText);
+            return currentOwnerFromQualityPolicyWidgetText(cardText);
         } catch (RuntimeException exception) {
             Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks inspection failed: "
                     + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
@@ -1102,49 +1164,227 @@ public class EasyQQualityPolicyTest {
         }
     }
 
-    private String stageFromQualityPolicyOwnerText(String cardText) {
+    private WorkflowUser currentOwnerFromQualityPolicyWidgetText(String cardText) {
         String normalizedText = String.valueOf(cardText).replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
         if (normalizedText.isBlank() || normalizedText.contains("no pending items")) {
             return null;
         }
-        String currentReviewer = "";
+        String currentOwner = "";
         Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s*:?\\s+([a-z ]+?)(?:\\s+approver|\\s+due|\\s+view|\\s+\\d|$)")
                 .matcher(normalizedText);
         if (currentReviewerMatcher.find()) {
-            currentReviewer = currentReviewerMatcher.group(1).trim();
+            currentOwner = currentReviewerMatcher.group(1).trim();
         }
-        String ownerText = currentReviewer;
-        if (ownerText.isBlank()) {
+        if (currentOwner.isBlank()) {
             Matcher approverMatcher = Pattern.compile("approver\\s*:?\\s+([a-z ]+?)(?:\\s+due|\\s+view|\\s+\\d|$)")
                     .matcher(normalizedText);
             if (approverMatcher.find()) {
-                ownerText = approverMatcher.group(1).trim();
+                currentOwner = approverMatcher.group(1).trim();
             }
         }
-        if (ownerText.isBlank()) {
-            ownerText = normalizedText;
+        WorkflowUser matchedUser = knownWorkflowUserByName(currentOwner);
+        if (matchedUser == null) {
+            matchedUser = knownWorkflowUserByName(normalizedText);
         }
-        if (ownerText.contains("amit")) {
-            return "APPROVER";
+        return matchedUser;
+    }
+
+    private String resolveAndApplyWorkflowParticipantsFromDocumentInformation(WorkflowUser currentOwner) {
+        openDocumentTab();
+        waitForSmallDelay();
+
+        String documentInfoText = documentInformationText();
+        String normalizedDocumentInfo = normalizeComparableText(documentInfoText);
+        Reporter.log("WORKFLOW RECOVERY: Document Information text for role mapping="
+                + compactForLog(documentInfoText, 700), true);
+
+        WorkflowUser author = findKnownUserInRoleSection(normalizedDocumentInfo, "author");
+        WorkflowUser reviewer1 = findKnownUserInRoleSection(normalizedDocumentInfo, "reviewer 1", "reviewer1");
+        WorkflowUser reviewer2 = findKnownUserInRoleSection(normalizedDocumentInfo, "reviewer 2", "reviewer2");
+        WorkflowUser approver = findKnownUserInRoleSection(normalizedDocumentInfo, "approver");
+
+        workflowParticipantsResolvedFromDocumentInformation = true;
+        activeAuthorUser = null;
+        activeReviewer1User = null;
+        activeReviewer2User = null;
+        activeApproverUser = null;
+
+        if (author != null) {
+            activeAuthorUser = author;
         }
-        if (ownerText.contains("pavan")) {
-            return "REVIEWER2";
+        if (reviewer1 != null) {
+            activeReviewer1User = reviewer1;
         }
-        if (ownerText.contains("varun")) {
+        if (reviewer2 != null) {
+            activeReviewer2User = reviewer2;
+        }
+        if (approver != null) {
+            activeApproverUser = approver;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Document Information resolved users. author="
+                + roleLabelOrDash(activeAuthorUser)
+                + ", reviewer1=" + roleLabelOrDash(activeReviewer1User)
+                + ", reviewer2=" + roleLabelOrDash(activeReviewer2User)
+                + ", approver=" + roleLabelOrDash(activeApproverUser), true);
+
+        if (sameWorkflowUser(currentOwner, activeReviewer1User)) {
             return "REVIEWER1";
         }
+        if (sameWorkflowUser(currentOwner, activeReviewer2User)) {
+            return "REVIEWER2";
+        }
+        if (sameWorkflowUser(currentOwner, activeApproverUser)) {
+            return "APPROVER";
+        }
         return null;
+    }
+
+    private String documentInformationText() {
+        try {
+            Object text = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+                            const candidates = Array.from(document.querySelectorAll('aside,section,article,div'))
+                              .filter(visible)
+                              .map(el => ({ el, text: textOf(el) }))
+                              .filter(item => item.text.toLowerCase().includes('document information'))
+                              .map(item => {
+                                const lower = item.text.toLowerCase();
+                                let score = 0;
+                                if (lower.includes('author')) score += 40;
+                                if (lower.includes('reviewer 1')) score += 50;
+                                if (lower.includes('reviewer 2')) score += 50;
+                                if (lower.includes('approver')) score += 45;
+                                score -= Math.min(120, item.text.length / 20);
+                                return { text: item.text, score };
+                              })
+                              .sort((a, b) => b.score - a.score);
+                            return candidates.length ? candidates[0].text : '';
+                            """);
+            String documentInfoText = String.valueOf(text);
+            return documentInfoText.isBlank() ? getBodyText() : documentInfoText;
+        } catch (RuntimeException exception) {
+            return getBodyText();
+        }
+    }
+
+    private WorkflowUser findKnownUserInRoleSection(String normalizedDocumentInfo, String... roleLabels) {
+        for (String roleLabel : roleLabels) {
+            String section = normalizedRoleSection(normalizedDocumentInfo, roleLabel);
+            if (section.isBlank()) {
+                continue;
+            }
+            WorkflowUser matchedUser = knownWorkflowUserByName(section);
+            if (matchedUser != null) {
+                return matchedUser;
+            }
+        }
+        return null;
+    }
+
+    private String normalizedRoleSection(String normalizedDocumentInfo, String roleLabel) {
+        String normalizedRoleLabel = normalizeComparableText(roleLabel);
+        int start = normalizedDocumentInfo.indexOf(normalizedRoleLabel);
+        if (start < 0) {
+            return "";
+        }
+        int end = normalizedDocumentInfo.length();
+        for (String nextRole : new String[]{"author", "reviewer 1", "reviewer1", "reviewer 2", "reviewer2", "approver"}) {
+            String normalizedNextRole = normalizeComparableText(nextRole);
+            if (normalizedNextRole.equals(normalizedRoleLabel)) {
+                continue;
+            }
+            int nextIndex = normalizedDocumentInfo.indexOf(normalizedNextRole, start + normalizedRoleLabel.length());
+            if (nextIndex > start && nextIndex < end) {
+                end = nextIndex;
+            }
+        }
+        return normalizedDocumentInfo.substring(start, end);
+    }
+
+    private WorkflowUser knownWorkflowUserByName(String text) {
+        String normalizedText = normalizeComparableText(text);
+        if (normalizedText.isBlank()) {
+            return null;
+        }
+        for (WorkflowUser user : knownWorkflowUsers()) {
+            if (workflowUserNameMatches(user, normalizedText)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    private boolean workflowUserNameMatches(WorkflowUser user, String normalizedText) {
+        if (user == null || normalizedText == null || normalizedText.isBlank()) {
+            return false;
+        }
+        for (String alias : user.aliases) {
+            String normalizedAlias = normalizeComparableText(alias);
+            if (!normalizedAlias.isBlank() && containsNormalizedPhrase(normalizedText, normalizedAlias)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<WorkflowUser> knownWorkflowUsers() {
+        return List.of(
+                new WorkflowUser(
+                        configValue("EASYQ_ADMIN_USERNAME", validEmail),
+                        getPassword(),
+                        "Varun Trivedi",
+                        "varun", "varun trivedi"),
+                new WorkflowUser(
+                        configValue("EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com"),
+                        requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                        "Pavan Prabhu",
+                        "pavan", "pavan prabhu"),
+                new WorkflowUser(
+                        configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "amit@easyqsolutions.com"),
+                        requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                        "Amit Karane",
+                        "amit", "amit karane")
+        );
+    }
+
+    private boolean sameWorkflowUser(WorkflowUser firstUser, WorkflowUser secondUser) {
+        if (firstUser == null || secondUser == null) {
+            return false;
+        }
+        return firstUser.username.equalsIgnoreCase(secondUser.username)
+                || workflowUserNameMatches(firstUser, normalizeComparableText(secondUser.roleLabel))
+                || workflowUserNameMatches(secondUser, normalizeComparableText(firstUser.roleLabel));
+    }
+
+    private String roleLabelOrDash(WorkflowUser user) {
+        return user == null ? "-" : user.roleLabel;
+    }
+
+    private String compactForLog(String text, int maxLength) {
+        String compactText = String.valueOf(text).replaceAll("\\s+", " ").trim();
+        return compactText.length() > maxLength ? compactText.substring(0, maxLength) : compactText;
     }
 
     private static final class WorkflowUser {
         private final String username;
         private final String password;
         private final String roleLabel;
+        private final String[] aliases;
 
-        private WorkflowUser(String username, String password, String roleLabel) {
+        private WorkflowUser(String username, String password, String roleLabel, String... aliases) {
             this.username = username;
             this.password = password;
             this.roleLabel = roleLabel;
+            this.aliases = aliases;
         }
     }
 
@@ -1287,22 +1527,36 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
+        String reviewer1Name = activeReviewer1User == null
+                ? configValue("EASYQ_QP_REVIEWER1_NAME", "Varun Trivedi")
+                : activeReviewer1User.roleLabel;
+        String reviewer2Name = activeReviewer2User == null
+                ? configValue("EASYQ_QP_REVIEWER2_NAME", "Pavan Prabhu")
+                : activeReviewer2User.roleLabel;
+        String approverName = activeApproverUser == null
+                ? configValue("EASYQ_QP_APPROVER_NAME", "Amit Karane")
+                : activeApproverUser.roleLabel;
+
         boolean reviewer1Selected = selectReviewerFromWorkflowDropdown(
-                configValue("EASYQ_QP_REVIEWER1_NAME", "Varun Trivedi"),
+                reviewer1Name,
                 "Select Reviewers", "Select Reviewer", "Choose one or more", "Reviewer", "Reviewers");
 
-        boolean reviewer2Selected = selectReviewerFromWorkflowDropdown(
-                configValue("EASYQ_QP_REVIEWER2_NAME", "Pavan Prabhu"),
-                "Select Reviewers", "Select Reviewer", "Choose one or more", "Reviewer", "Reviewers");
+        boolean reviewer2Selected = true;
+        if (activeReviewer2User != null || !workflowParticipantsResolvedFromDocumentInformation) {
+            reviewer2Selected = selectReviewerFromWorkflowDropdown(
+                    reviewer2Name,
+                    "Select Reviewers", "Select Reviewer", "Choose one or more", "Reviewer", "Reviewers");
+        }
 
         boolean approverSelected = selectApproverFromWorkflowDropdown(
-                configValue("EASYQ_QP_APPROVER_NAME", "Amit Karane"),
+                approverName,
                 "Select Approvers", "Select Approver", "Choose only one", "Approver", "Approval User");
         setAllEmptyDueDatesToTodayOnce();
 
         fillWorkflowComment(uniqueWorkflowText("Send to Review assignment", "QP workflow comment"));
         scrollActiveDialogToBottom();
-        fillAuthenticationPassword(getPassword());
+        WorkflowUser author = activeAuthorUser == null ? configuredWorkflowUserForStage("REVIEWER1") : activeAuthorUser;
+        fillAuthenticationPassword(author.password);
 
         boolean submitted = clickSendForReviewInsideWorkflowPopup();
         if (submitted) {
@@ -3560,21 +3814,39 @@ public class EasyQQualityPolicyTest {
                 : workflowResumeStage;
         Reporter.log("WORKFLOW EXACT: Continuing QP workflow from detected stage=" + resumeStage, true);
 
+        WorkflowUser reviewer1User = workflowUserForStage("REVIEWER1");
+        WorkflowUser reviewer2User = workflowUserForStage("REVIEWER2");
+        WorkflowUser approverUser = workflowUserForStage("APPROVER");
+        if (reviewer1User == null && ("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage))) {
+            Reporter.log("WORKFLOW RECOVERY: Reviewer 1 user is not available from Document Information/config.", true);
+            return false;
+        }
+        if (reviewer2User == null && "REVIEWER2".equals(resumeStage)) {
+            Reporter.log("WORKFLOW RECOVERY: Resume stage is Reviewer 2, but Reviewer 2 is not available "
+                    + "from Document Information/config.", true);
+            return false;
+        }
+        if (approverUser == null) {
+            Reporter.log("WORKFLOW RECOVERY: Approver user is not available from Document Information/config.", true);
+            return false;
+        }
+        boolean hasReviewer2 = reviewer2User != null;
+
         boolean reviewer1Approved = false;
         boolean reviewer2Approved = false;
 
         if ("REVIEWER1".equals(resumeStage) && rejectFirst) {
             boolean rejected = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
-                    reviewer1Password(),
+                    reviewer1User.username,
+                    reviewer1User.password,
                     "Reject",
-                    "Reviewer 1 Varun");
+                    workflowRoleLabel("Reviewer 1", reviewer1User));
             if (!rejected) {
                 return false;
             }
-            Reporter.log("WORKFLOW EXACT: Reviewer 1 Varun rejection is confirmed in Varun Draft/Returned area.", true);
+            Reporter.log("WORKFLOW EXACT: Reviewer 1 rejection is confirmed in initiator Draft/Returned area.", true);
 
-            loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+            loginAsWorkflowAuthor();
             if (!resubmitRejectedDraftFromVarunAccount()) {
                 return false;
             }
@@ -3582,10 +3854,10 @@ public class EasyQQualityPolicyTest {
 
         if ("REVIEWER1".equals(resumeStage)) {
             reviewer1Approved = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
-                    reviewer1Password(),
+                    reviewer1User.username,
+                    reviewer1User.password,
                     "Approve",
-                    "Reviewer 1 Varun");
+                    workflowRoleLabel("Reviewer 1", reviewer1User));
             if (!reviewer1Approved) {
                 return false;
             }
@@ -3593,32 +3865,32 @@ public class EasyQQualityPolicyTest {
             reviewer1Approved = true;
         }
 
-        if (("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage)) && rejectFirst) {
+        if (hasReviewer2 && ("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage)) && rejectFirst) {
             boolean reviewer2Rejected = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
-                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    reviewer2User.username,
+                    reviewer2User.password,
                     "Reject",
-                    "Reviewer 2 Pavan");
+                    workflowRoleLabel("Reviewer 2", reviewer2User));
             if (!reviewer2Rejected) {
                 return false;
             }
 
             reviewer1Approved = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER1_USERNAME", config.get("EASYQ_ADMIN_USERNAME")),
-                    reviewer1Password(),
+                    reviewer1User.username,
+                    reviewer1User.password,
                     "Approve",
-                    "Reviewer 1 Varun after Reviewer 2 reject");
+                    workflowRoleLabel("Reviewer 1", reviewer1User) + " after Reviewer 2 reject");
             if (!reviewer1Approved) {
                 return false;
             }
         }
 
-        if ("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage)) {
+        if (hasReviewer2 && ("REVIEWER1".equals(resumeStage) || "REVIEWER2".equals(resumeStage))) {
             reviewer2Approved = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
-                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                    reviewer2User.username,
+                    reviewer2User.password,
                     "Approve",
-                    "Reviewer 2 Pavan");
+                    workflowRoleLabel("Reviewer 2", reviewer2User));
             if (!reviewer2Approved) {
                 return false;
             }
@@ -3628,29 +3900,37 @@ public class EasyQQualityPolicyTest {
 
         if (rejectFirst) {
             boolean approverRejected = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_APPROVER_USERNAME", config.get("EASYQ_ASSIGNEE_AMIT_USERNAME")),
-                    requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                    approverUser.username,
+                    approverUser.password,
                     "Reject",
-                    "Approver Amit Karane");
+                    workflowRoleLabel("Approver", approverUser));
             if (!approverRejected) {
                 return false;
             }
 
-            reviewer2Approved = performConfiguredWorkflowAction(
-                    configValue("EASYQ_QP_REVIEWER2_USERNAME", config.get("EASYQ_DOC_CONTROLLER_USERNAME")),
-                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+            WorkflowUser postApproverRejectUser = hasReviewer2 ? reviewer2User : reviewer1User;
+            String postApproverRejectRole = hasReviewer2 ? "Reviewer 2" : "Reviewer 1";
+            boolean reviewerApprovedAfterApproverReject = performConfiguredWorkflowAction(
+                    postApproverRejectUser.username,
+                    postApproverRejectUser.password,
                     "Approve",
-                    "Reviewer 2 Pavan after Approver reject");
-            if (!reviewer2Approved) {
+                    workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject");
+            if (!reviewerApprovedAfterApproverReject) {
                 return false;
+            }
+            if (hasReviewer2) {
+                reviewer2Approved = true;
+            } else {
+                reviewer1Approved = true;
             }
         }
 
         boolean approverApproved = performConfiguredWorkflowAction(
-                configValue("EASYQ_QP_APPROVER_USERNAME", config.get("EASYQ_ASSIGNEE_AMIT_USERNAME")),
-                requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                approverUser.username,
+                approverUser.password,
                 "Approve",
-                rejectFirst ? "Approver Amit Karane final approval" : "Approver Amit Karane");
+                rejectFirst ? workflowRoleLabel("Approver", approverUser) + " final approval"
+                        : workflowRoleLabel("Approver", approverUser));
 
         return reviewer1Approved && reviewer2Approved && approverApproved
                 && verifyNewlyApprovedVersionAvailableFromVarun();
@@ -3658,9 +3938,9 @@ public class EasyQQualityPolicyTest {
 
     private boolean resubmitRejectedDraftFromVarunAccount() {
         Reporter.log("WORKFLOW EXACT: Opening returned Draft QP after Reviewer 1 rejection, updating Evaluation, "
-                + "and sending again to Varun/Pavan/Amit.", true);
-        Reporter.log("WORKFLOW EXACT: Re-login as Varun initiator, open Quality Policy, then open Draft tab.", true);
-        loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+                + "and sending again to configured/detected reviewers and approver.", true);
+        Reporter.log("WORKFLOW EXACT: Re-login as detected initiator/author, open Quality Policy, then open Draft tab.", true);
+        loginAsWorkflowAuthor();
 
         if (!waitForRejectedQualityPolicyInVarunDraft()) {
             Reporter.log("WORKFLOW EXACT: Rejected QP was expected in Draft, but no Draft/Returned record opened. "
@@ -3675,6 +3955,17 @@ public class EasyQQualityPolicyTest {
         }
 
         return submitCurrentDraftForReviewWithConfiguredUsers();
+    }
+
+    private void loginAsWorkflowAuthor() {
+        WorkflowUser author = activeAuthorUser == null
+                ? configuredWorkflowUserForStage("REVIEWER1")
+                : activeAuthorUser;
+        loginAsConfiguredUser(author.username, author.password);
+    }
+
+    private String workflowRoleLabel(String roleName, WorkflowUser user) {
+        return roleName + " " + (user == null ? "Unknown User" : user.roleLabel);
     }
 
     private boolean performConfiguredWorkflowAction(String username, String password, String action, String roleLabel) {
@@ -3730,13 +4021,15 @@ public class EasyQQualityPolicyTest {
     private boolean verifyWorkflowStateAfterAction(String action, String roleLabel) {
         if ("Reject".equalsIgnoreCase(action)) {
             if (roleLabel.contains("Reviewer 1")) {
-                Reporter.log("WORKFLOW EXACT: Verifying Reviewer 1 rejection moved QP to Varun Draft/Returned area.", true);
+                Reporter.log("WORKFLOW EXACT: Verifying Reviewer 1 rejection moved QP to author Draft/Returned area.", true);
+                loginAsWorkflowAuthor();
                 boolean draftFound = waitForRejectedQualityPolicyInVarunDraft();
                 Reporter.log("WORKFLOW EXACT: Reviewer 1 rejection Draft/Returned verification result=" + draftFound
                         + ". Visible text: " + shortBodyText(), true);
                 return draftFound;
             }
-            return pageContainsAny("Rejected", "Changes Requested", "Returned", "Rework");
+            return pageContainsAny("Rejected", "Changes Requested", "Returned", "Rework",
+                    "Under Review", "Review Pending", "Current Reviewer", "Due Today");
         }
 
         return pageContainsAny("Approved", "Review", "Under Review", "Pending", "Completed");
