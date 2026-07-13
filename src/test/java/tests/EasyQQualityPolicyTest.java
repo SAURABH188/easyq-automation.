@@ -43,7 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_FIRST_OWNER_CHECK_2026_07_13_AQ";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_ALL_TASKS_WAIT_2026_07_13_AR";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -983,7 +983,7 @@ public class EasyQQualityPolicyTest {
             loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
             openDashboard();
             clickDashboardAllTasksToggle();
-            String cardText = dashboardQualityPolicyCardText();
+            String cardText = waitForDashboardAllTasksQualityPolicyDetails();
             Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget text="
                     + cardText.replaceAll("\\s+", " ").trim(), true);
             return stageFromQualityPolicyOwnerText(cardText);
@@ -1027,6 +1027,43 @@ public class EasyQQualityPolicyTest {
             clickButtonByText("All Tasks");
         }
         waitForSmallDelay();
+    }
+
+    private String waitForDashboardAllTasksQualityPolicyDetails() {
+        long deadline = System.currentTimeMillis() + Duration.ofSeconds(config.getInt("explicitWait")).toMillis();
+        long firstCheckAt = System.currentTimeMillis();
+        String lastText = "";
+        String lastMeaningfulText = "";
+        int stableCount = 0;
+
+        while (System.currentTimeMillis() < deadline) {
+            String cardText = dashboardQualityPolicyCardText().replaceAll("\\s+", " ").trim();
+            if (!cardText.isBlank()) {
+                lastMeaningfulText = cardText;
+            }
+
+            boolean hasLoadedDecisionText = containsAnyIgnoreCase(cardText,
+                    "Current Reviewer", "Approver", "Due", "No Pending Items");
+            boolean dashboardStillLoading = containsAnyIgnoreCase(getBodyText(), "Loading ...", "Loading...");
+
+            if (hasLoadedDecisionText && !dashboardStillLoading) {
+                stableCount = cardText.equals(lastText) ? stableCount + 1 : 1;
+                lastText = cardText;
+                if (stableCount >= 2 && System.currentTimeMillis() - firstCheckAt >= 2000) {
+                    Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget loaded and stable.", true);
+                    return cardText;
+                }
+            } else {
+                stableCount = 0;
+                lastText = cardText;
+            }
+
+            waitForSmallDelay();
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget wait timed out. "
+                + "Using last visible widget text.", true);
+        return lastMeaningfulText;
     }
 
     private String dashboardQualityPolicyCardText() {
