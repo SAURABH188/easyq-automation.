@@ -43,7 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_OWNER_RECOVERY_2026_07_13_AP";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_FIRST_OWNER_CHECK_2026_07_13_AQ";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -771,7 +771,16 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean ensureUnderReviewPolicyFromApprovedOrExistingDraft() {
-        Reporter.log("WORKFLOW: Preparing QP review cycle. Reuse existing Draft/Rejected before moving Approved again.", true);
+        Reporter.log("WORKFLOW: Preparing QP review cycle. First check Dashboard All Tasks QP widget.", true);
+        Boolean dashboardResumeResult = tryResumeQualityPolicyFromDashboardAllTasksFirst();
+        if (Boolean.TRUE.equals(dashboardResumeResult)) {
+            return true;
+        }
+        if (Boolean.FALSE.equals(dashboardResumeResult)) {
+            return false;
+        }
+
+        Reporter.log("WORKFLOW: Dashboard has no pending QP details. Continuing normal Approved/Draft process.", true);
         navigateToQualityPolicy();
 
         if (openUnderReviewQualityPolicyTask()) {
@@ -811,6 +820,35 @@ public class EasyQQualityPolicyTest {
         }
 
         Reporter.log("WORKFLOW EXACT: Approved QP start path failed. Not switching to Draft/Under Review fallback.", true);
+        return false;
+    }
+
+    private Boolean tryResumeQualityPolicyFromDashboardAllTasksFirst() {
+        String dashboardStage = detectPendingQualityPolicyStageFromDashboardAllTasks();
+        if (dashboardStage == null) {
+            Reporter.log("WORKFLOW RECOVERY: No pending QP owner found in Dashboard All Tasks widget.", true);
+            return null;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks detected QP stage=" + dashboardStage
+                + ". Opening corresponding user account before normal draft creation.", true);
+        if (tryOpenPendingQualityPolicyForStage(dashboardStage)) {
+            return true;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Dashboard showed QP stage=" + dashboardStage
+                + " but task did not open for that user. Checking other configured workflow users.", true);
+        for (String stage : new String[]{"REVIEWER1", "REVIEWER2", "APPROVER"}) {
+            if (stage.equals(dashboardStage)) {
+                continue;
+            }
+            if (tryOpenPendingQualityPolicyForStage(stage)) {
+                return true;
+            }
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Dashboard says QP is pending, but script could not open it for "
+                + "Varun, Pavan, or Amit. Stopping before creating another draft.", true);
         return false;
     }
 
@@ -1033,12 +1071,22 @@ public class EasyQQualityPolicyTest {
             return null;
         }
         String currentReviewer = "";
-        Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s+([a-z ]+?)(?:\\s+approver|\\s+due|\\s+\\d|$)")
+        Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s*:?\\s+([a-z ]+?)(?:\\s+approver|\\s+due|\\s+view|\\s+\\d|$)")
                 .matcher(normalizedText);
         if (currentReviewerMatcher.find()) {
             currentReviewer = currentReviewerMatcher.group(1).trim();
         }
-        String ownerText = currentReviewer.isBlank() ? normalizedText : currentReviewer;
+        String ownerText = currentReviewer;
+        if (ownerText.isBlank()) {
+            Matcher approverMatcher = Pattern.compile("approver\\s*:?\\s+([a-z ]+?)(?:\\s+due|\\s+view|\\s+\\d|$)")
+                    .matcher(normalizedText);
+            if (approverMatcher.find()) {
+                ownerText = approverMatcher.group(1).trim();
+            }
+        }
+        if (ownerText.isBlank()) {
+            ownerText = normalizedText;
+        }
         if (ownerText.contains("amit")) {
             return "APPROVER";
         }
