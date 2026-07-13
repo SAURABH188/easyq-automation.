@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DOC_CONTROLLER_DRAFT_SEARCH_2026_07_13_AV";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_WIDGET_DETAIL_WAIT_2026_07_13_AW";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
 
     private WebDriver driver;
@@ -1212,6 +1212,8 @@ public class EasyQQualityPolicyTest {
     private String waitForDashboardAllTasksQualityPolicyDetails() {
         long deadline = System.currentTimeMillis() + Duration.ofSeconds(config.getInt("explicitWait")).toMillis();
         long firstCheckAt = System.currentTimeMillis();
+        long noPendingFirstSeenAt = 0L;
+        long noPendingGraceMillis = Duration.ofSeconds(12).toMillis();
         String lastText = "";
         String lastMeaningfulText = "";
         int stableCount = 0;
@@ -1222,20 +1224,34 @@ public class EasyQQualityPolicyTest {
                 lastMeaningfulText = cardText;
             }
 
-            boolean hasLoadedDecisionText = containsAnyIgnoreCase(cardText,
-                    "Current Reviewer", "Approver", "Due", "No Pending Items");
+            boolean hasWorkflowDetails = containsAnyIgnoreCase(cardText,
+                    "Current Reviewer", "Approver", "Due", "Due Today")
+                    && !containsAnyIgnoreCase(cardText, "No Pending Items");
+            boolean hasNoPendingState = containsAnyIgnoreCase(cardText, "No Pending Items");
             boolean dashboardStillLoading = containsAnyIgnoreCase(getBodyText(), "Loading ...", "Loading...");
 
-            if (hasLoadedDecisionText && !dashboardStillLoading) {
+            if (hasWorkflowDetails && !dashboardStillLoading) {
                 stableCount = cardText.equals(lastText) ? stableCount + 1 : 1;
                 lastText = cardText;
                 if (stableCount >= 2 && System.currentTimeMillis() - firstCheckAt >= 2000) {
-                    Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget loaded and stable.", true);
+                    Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget details are visible and stable.", true);
+                    return cardText;
+                }
+            } else if (hasNoPendingState && !dashboardStillLoading) {
+                if (noPendingFirstSeenAt == 0L) {
+                    noPendingFirstSeenAt = System.currentTimeMillis();
+                }
+                stableCount = cardText.equals(lastText) ? stableCount + 1 : 1;
+                lastText = cardText;
+                if (stableCount >= 3 && System.currentTimeMillis() - noPendingFirstSeenAt >= noPendingGraceMillis) {
+                    Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks QP widget stayed without pending details "
+                            + "for the grace period; continuing normal Draft/Approved search.", true);
                     return cardText;
                 }
             } else {
                 stableCount = 0;
                 lastText = cardText;
+                noPendingFirstSeenAt = 0L;
             }
 
             waitForSmallDelay();
