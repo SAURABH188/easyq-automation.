@@ -830,7 +830,11 @@ public class EasyQQualityPolicyTest {
             Reporter.log("WORKFLOW EXACT: Move to Draft action not found. Visible text: " + shortBodyText(), true);
             return false;
         }
-        confirmMoveToDraftPrompt();
+        if (!confirmMoveToDraftPrompt()) {
+            Reporter.log("WORKFLOW EXACT: Move to Draft was clicked, but Draft state was not confirmed. "
+                    + "Stopping before reviewer assignment. Visible text: " + shortBodyText(), true);
+            return false;
+        }
         qualityPolicyDraftCreatedInCurrentTest = true;
         waitForPageToContain("Draft", "Evaluation", "Document", "Save");
 
@@ -1687,12 +1691,17 @@ public class EasyQQualityPolicyTest {
         }
     }
 
-    private void confirmMoveToDraftPrompt() {
+    private boolean confirmMoveToDraftPrompt() {
         boolean confirmed = clickYesMoveToDraftConfirmation();
         boolean cancelClosed = confirmed && clickCancelMoveToDraftConfirmationIfStillVisible();
         Reporter.log("WORKFLOW EXACT: Move to Draft confirmation clicked=" + confirmed
                 + ", cancelClosedPopup=" + cancelClosed, true);
         waitForSmallDelay();
+        boolean draftStateVisible = waitForDraftEditor()
+                || pageContainsAny("Draft", "Save", "Send for Review", "What is the change", "Why is the change needed");
+        Reporter.log("WORKFLOW EXACT: Move to Draft post-confirm Draft state visible=" + draftStateVisible
+                + ". Visible text: " + shortBodyText(), true);
+        return confirmed || draftStateVisible;
     }
 
     private boolean clickYesMoveToDraftConfirmation() {
@@ -4912,9 +4921,10 @@ public class EasyQQualityPolicyTest {
         String bodyText = getBodyText();
         return !hasNoPolicyRecordsOnCurrentTab()
                 && (isQualityPolicyDetailOpen() || isDocumentActionAreaOpen())
+                && containsAnyIgnoreCase(bodyText, "Quality Policy", "Document", "Evaluation")
                 && containsAnyIgnoreCase(bodyText,
-                "Current Reviewer", "Next Reviewer", "Due Today", "Reject", "Approve", "Request Changes")
-                && containsAnyIgnoreCase(bodyText, "Quality Policy", "Document", "Evaluation", "Under Review", "Review");
+                "Under Review", "Review Pending", "Current Reviewer", "Next Reviewer", "Due Today")
+                && containsAnyIgnoreCase(bodyText, "Reject", "Approve", "Request Changes");
     }
 
     private void fillEvaluationFormWithDummyContent() {
@@ -5614,9 +5624,9 @@ public class EasyQQualityPolicyTest {
 
         if (openApprovedQualityPolicy()) {
             boolean moved = clickMoveToDraftAction();
-            confirmMoveToDraftPrompt();
+            boolean draftConfirmed = moved && confirmMoveToDraftPrompt();
             waitForSmallDelay();
-            if (moved && waitForDraftEditor()) {
+            if (draftConfirmed && waitForDraftEditor()) {
                 return true;
             }
             if (isDocumentActionAreaOpen()) {
