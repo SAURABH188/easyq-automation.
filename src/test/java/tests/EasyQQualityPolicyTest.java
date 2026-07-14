@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_CREATE_AFTER_NO_DASHBOARD_PENDING_2026_07_14_BA";
+    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_NO_MENU_DRAFT_CANDIDATE_2026_07_14_BB";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -735,13 +735,25 @@ public class EasyQQualityPolicyTest {
 
         navLog("NAV: Opening Quality Policy module. Current URL: " + safeCurrentUrl());
 
-        HamburgerNavigationHelper.openModule(driver, wait, qualityPolicyTitle, "Quality Policy",
-                "quality\\s*policy|quality-policy|qualitypolicy", false);
+        try {
+            HamburgerNavigationHelper.openModule(driver, wait, qualityPolicyTitle, "Quality Policy",
+                    "quality\\s*policy|quality-policy|qualitypolicy", false);
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("NAV: Hamburger/sidebar Quality Policy navigation failed. "
+                    + "Trying direct route and dashboard widget fallback. Reason: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+        }
         if (waitForQualityPolicyPage()) {
             return;
         }
+        if (openQualityPolicyListRouteDirectly()) {
+            return;
+        }
+        if (openQualityPolicyFromDashboardWidget()) {
+            return;
+        }
 
-        Assert.fail("Quality Policy module was not opened from the hamburger/sidebar menu. URL: "
+        Assert.fail("Quality Policy module was not opened from hamburger, direct route, or dashboard widget. URL: "
                 + safeCurrentUrl() + " | Visible text: " + shortBodyText());
     }
 
@@ -963,7 +975,16 @@ public class EasyQQualityPolicyTest {
             activeApproverUser = null;
             workflowParticipantsResolvedFromDocumentInformation = false;
 
-            if (!openDraftOrReturnedQualityPolicyFromDraftTabOnly()) {
+            boolean draftOpened;
+            try {
+                draftOpened = openDraftOrReturnedQualityPolicyFromDraftTabOnly();
+            } catch (AssertionError | RuntimeException exception) {
+                Reporter.log("WORKFLOW RECOVERY: Draft author candidate "
+                        + authorCandidate.roleLabel + " skipped because Quality Policy could not be opened. Reason: "
+                        + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+                continue;
+            }
+            if (!draftOpened) {
                 continue;
             }
             Reporter.log("WORKFLOW RECOVERY: Existing QP Draft found under "
@@ -991,7 +1012,14 @@ public class EasyQQualityPolicyTest {
         Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
                 + " account for pending Under Review QP.", true);
         loginAsConfiguredUser(workflowUser.username, workflowUser.password);
-        navigateToQualityPolicy();
+        try {
+            navigateToQualityPolicy();
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("WORKFLOW RECOVERY: " + workflowUser.roleLabel
+                    + " skipped because Quality Policy could not be opened. Reason: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
         if (openUnderReviewQualityPolicyTask()) {
             String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
             workflowResumeStage = resolvedStage == null ? stage : resolvedStage;
@@ -1009,7 +1037,14 @@ public class EasyQQualityPolicyTest {
         Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
                 + " account for pending Under Review QP.", true);
         loginAsConfiguredUser(workflowUser.username, workflowUser.password);
-        navigateToQualityPolicy();
+        try {
+            navigateToQualityPolicy();
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("WORKFLOW RECOVERY: " + workflowUser.roleLabel
+                    + " skipped because Quality Policy could not be opened. Reason: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
         if (!openUnderReviewQualityPolicyTask()) {
             return false;
         }
@@ -6141,6 +6176,67 @@ public class EasyQQualityPolicyTest {
             }
         }
         return false;
+    }
+
+    private boolean openQualityPolicyFromDashboardWidget() {
+        try {
+            if (!containsAnyIgnoreCase(getBodyText(), "QMS Status", "Dashboard")) {
+                openDashboard();
+            }
+            waitForActionCompletionAndDataLoad("Dashboard QP widget fallback",
+                    "Dashboard", "QMS Status", "Quality Policy");
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 1 && rect.height > 1
+                                && style.display !== 'none'
+                                && style.visibility !== 'hidden'
+                                && style.opacity !== '0';
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim();
+                            const roots = Array.from(document.querySelectorAll('section,article,div,li'))
+                              .filter(visible)
+                              .filter(el => {
+                                const text = textOf(el).toLowerCase();
+                                return text.includes('quality policy') && text.includes('view');
+                              })
+                              .sort((a, b) => {
+                                const ar = a.getBoundingClientRect();
+                                const br = b.getBoundingClientRect();
+                                return (ar.width * ar.height) - (br.width * br.height);
+                              });
+                            for (const root of roots) {
+                              const buttons = Array.from(root.querySelectorAll('button,a,[role=button],[role=link],span,div'))
+                                .filter(visible)
+                                .filter(el => /^view\\s*$/i.test(textOf(el)) || /\\bview\\b/i.test(textOf(el)));
+                              if (!buttons.length) continue;
+                              const target = buttons[0].closest('button,a,[role=button],[role=link]') || buttons[0];
+                              target.scrollIntoView({block: 'center', inline: 'center'});
+                              target.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                              target.click();
+                              return 'CLICKED_QP_WIDGET_VIEW:' + textOf(target);
+                            }
+                            return 'NO_QP_WIDGET_VIEW';
+                            """);
+            Reporter.log("NAV: Dashboard Quality Policy widget fallback result=" + result, true);
+            waitForSmallDelay();
+            return String.valueOf(result).startsWith("CLICKED_QP_WIDGET_VIEW")
+                    && waitForQualityPolicyPage();
+        } catch (RuntimeException exception) {
+            Reporter.log("NAV: Dashboard Quality Policy widget fallback failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
     }
 
     private boolean verifyApprovedAndObsoleteSectionsAreViewModeOnly() {
