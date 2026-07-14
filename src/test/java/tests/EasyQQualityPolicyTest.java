@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_PDF_DOWNLOAD_2026_07_14_BD";
+    private static final String QP_FLOW_CODE_VERSION = "QP_LOGIN_RETRY_AFTER_2FA_2026_07_14_BE";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -632,11 +632,14 @@ public class EasyQQualityPolicyTest {
                 loginAsOnce(username, password);
                 return;
             } catch (RuntimeException exception) {
-                if (attempt == 1 && isRecoverableBrowserSessionError(exception)) {
-                    Reporter.log("LOGIN: Browser session detached while logging in as " + username
-                            + ". Restarting Chrome and retrying once.", true);
-                    shutdownBrowser();
-                    startBrowser();
+                if (attempt == 1 && isRecoverableLoginAttemptFailure(exception)) {
+                    Reporter.log("LOGIN: Login attempt for " + username
+                            + " did not reach dashboard/app shell. Retrying once. Reason: "
+                            + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+                    if (isRecoverableBrowserSessionError(exception)) {
+                        shutdownBrowser();
+                        startBrowser();
+                    }
                     waitForSmallDelay();
                     continue;
                 }
@@ -668,10 +671,107 @@ public class EasyQQualityPolicyTest {
         waitForSmallDelay();
         submitLoginForm();
         waitForSmallDelay();
-        wait.until(ExpectedConditions.or(
-                ExpectedConditions.visibilityOfElementLocated(dashboardText),
-                ExpectedConditions.not(ExpectedConditions.urlContains("/login"))
-        ));
+        waitForLoginToReachApplication(username);
+    }
+
+    private void waitForLoginToReachApplication(String username) {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait"))).until(currentDriver ->
+                    isLoggedInApplicationShell() || isTwoFactorSetupPage() || isOnLoginPage());
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("Login did not finish loading for " + username
+                    + ". URL: " + safeCurrentUrl() + " | Visible text: " + shortBodyText(), exception);
+        }
+
+        if (isLoggedInApplicationShell()) {
+            return;
+        }
+
+        if (isTwoFactorSetupPage()) {
+            Reporter.log("LOGIN: " + username + " landed on two-factor setup. Trying to dismiss/skip setup.", true);
+            if (dismissTwoFactorSetupIfPossible() && isLoggedInApplicationShell()) {
+                return;
+            }
+            openDashboard();
+            if (isLoggedInApplicationShell()) {
+                return;
+            }
+            throw new IllegalStateException("Login for " + username
+                    + " is blocked on two-factor setup. URL: " + safeCurrentUrl()
+                    + " | Visible text: " + shortBodyText());
+        }
+
+        throw new IllegalStateException("Login for " + username
+                + " returned to login page or did not reach dashboard. URL: " + safeCurrentUrl()
+                + " | Visible text: " + shortBodyText());
+    }
+
+    private boolean isRecoverableLoginAttemptFailure(Throwable exception) {
+        return isRecoverableBrowserSessionError(exception)
+                || String.valueOf(exception.getMessage()).toLowerCase(Locale.ROOT).contains("two-factor")
+                || String.valueOf(exception.getMessage()).toLowerCase(Locale.ROOT).contains("did not reach dashboard")
+                || String.valueOf(exception.getMessage()).toLowerCase(Locale.ROOT).contains("returned to login page");
+    }
+
+    private boolean dismissTwoFactorSetupIfPossible() {
+        if (clickButtonByText("Skip for now", "Maybe later", "Remind me later", "Not now",
+                "I'll do this later", "I will do this later", "Continue to dashboard", "Go to dashboard",
+                "Back to dashboard", "Cancel", "Close")) {
+            waitForActionCompletionAndDataLoad("2FA setup dismissal", "Dashboard", "QMS Status", "Easyq Solutions");
+            return !isTwoFactorSetupPage() && !isOnLoginPage();
+        }
+
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = window.getComputedStyle(el);
+                              return rect.width > 1 && rect.height > 1
+                                && style.display !== 'none'
+                                && style.visibility !== 'hidden'
+                                && style.opacity !== '0';
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const labels = [
+                              'skip for now',
+                              'maybe later',
+                              'remind me later',
+                              'not now',
+                              'do this later',
+                              'continue to dashboard',
+                              'go to dashboard',
+                              'back to dashboard',
+                              'cancel',
+                              'close'
+                            ];
+                            const controls = Array.from(document.querySelectorAll('button,a,[role=button],[role=link],span,div'))
+                              .filter(visible)
+                              .map(el => ({el, text: textOf(el)}))
+                              .filter(item => labels.some(label => item.text === label || item.text.includes(label)))
+                              .sort((a, b) => a.text.length - b.text.length);
+                            if (!controls.length) return 'NO_2FA_DISMISS_ACTION';
+                            const target = controls[0].el.closest('button,a,[role=button],[role=link]') || controls[0].el;
+                            target.scrollIntoView({block: 'center', inline: 'center'});
+                            target.click();
+                            return 'CLICKED_2FA_DISMISS:' + textOf(target);
+                            """);
+            Reporter.log("LOGIN: 2FA setup dismiss result=" + result, true);
+            waitForActionCompletionAndDataLoad("2FA setup JS dismissal", "Dashboard", "QMS Status", "Easyq Solutions");
+            return String.valueOf(result).startsWith("CLICKED_2FA_DISMISS")
+                    && !isTwoFactorSetupPage()
+                    && !isOnLoginPage();
+        } catch (RuntimeException exception) {
+            Reporter.log("LOGIN: 2FA setup dismiss failed: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
     }
 
     private boolean isRecoverableBrowserSessionError(Throwable exception) {
@@ -7042,6 +7142,24 @@ public class EasyQQualityPolicyTest {
     private boolean isOnLoginPage() {
         return safeCurrentUrl().toLowerCase().contains("/login")
                 || containsAnyIgnoreCase(getBodyText(), "Log In", "Login", "Sign In", "Forgot Password");
+    }
+
+    private boolean isTwoFactorSetupPage() {
+        return safeCurrentUrl().toLowerCase(Locale.ROOT).contains("two-factor")
+                || containsAnyIgnoreCase(getBodyText(),
+                "two-factor", "2FA", "Setup authenticator app", "Authenticator app",
+                "Enter code", "Confirm Setup", "one-time passwords");
+    }
+
+    private boolean isLoggedInApplicationShell() {
+        if (isOnLoginPage() || isTwoFactorSetupPage()) {
+            return false;
+        }
+        String url = safeCurrentUrl().toLowerCase(Locale.ROOT);
+        String bodyText = getBodyText();
+        return url.contains("/dashboard")
+                || containsAnyIgnoreCase(bodyText,
+                "Dashboard", "QMS Status", "All Tasks", "My Tasks", "notifications", "Easyq Solutions /");
     }
 
     private boolean waitForPageToContain(String... values) {
