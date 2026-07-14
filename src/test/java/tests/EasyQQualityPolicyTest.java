@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_NO_MENU_DRAFT_CANDIDATE_2026_07_14_BB";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_ICON_PENDING_OWNER_2026_07_14_BC";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -1342,6 +1342,11 @@ public class EasyQQualityPolicyTest {
     }
 
     private WorkflowUser currentOwnerFromQualityPolicyWidgetText(String cardText) {
+        WorkflowUser iconOwner = currentOwnerFromQualityPolicyWidgetIcons();
+        if (iconOwner != null) {
+            return iconOwner;
+        }
+
         String normalizedText = String.valueOf(cardText).replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
         if (normalizedText.isBlank() || normalizedText.contains("no pending items")) {
             return null;
@@ -1364,6 +1369,177 @@ public class EasyQQualityPolicyTest {
             matchedUser = knownWorkflowUserByName(normalizedText);
         }
         return matchedUser;
+    }
+
+    private WorkflowUser currentOwnerFromQualityPolicyWidgetIcons() {
+        String iconRowsText = dashboardQualityPolicyIconRowsText();
+        if (iconRowsText.isBlank()) {
+            return null;
+        }
+        Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget icon rows="
+                + iconRowsText.replaceAll("\\s+", " ").trim(), true);
+
+        WorkflowUser bestUser = null;
+        int bestScore = Integer.MIN_VALUE;
+        for (String row : iconRowsText.split("\\R")) {
+            String normalizedRow = row.replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+            if (!normalizedRow.startsWith("pending::")) {
+                continue;
+            }
+            WorkflowUser rowUser = knownWorkflowUserByName(normalizedRow);
+            if (rowUser == null) {
+                continue;
+            }
+            int score = 10;
+            if (normalizedRow.contains("current reviewer")) {
+                score += 120;
+            }
+            if (normalizedRow.contains("approver")) {
+                score += 100;
+            }
+            Matcher reviewerNumber = Pattern.compile("reviewer\\s*(\\d+)").matcher(normalizedRow);
+            if (reviewerNumber.find()) {
+                score += 80 - Math.min(50, Integer.parseInt(reviewerNumber.group(1)));
+            } else if (normalizedRow.contains("reviewer")) {
+                score += 60;
+            }
+            if (normalizedRow.contains("next reviewer")) {
+                score -= 30;
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                bestUser = rowUser;
+            }
+        }
+
+        if (bestUser != null) {
+            Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget pending icon detected current owner="
+                    + bestUser.roleLabel, true);
+        }
+        return bestUser;
+    }
+
+    private String dashboardQualityPolicyIconRowsText() {
+        try {
+            Object rows = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden'
+                                && style.display !== 'none'
+                                && Number(style.opacity || 1) > 0;
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title'),
+                              el && el.getAttribute && el.getAttribute('class')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim();
+                            const colorState = value => {
+                              const text = String(value || '').toLowerCase();
+                              const numbers = text.match(/\\d+(?:\\.\\d+)?/g);
+                              if (!numbers || numbers.length < 3) return '';
+                              const [r, g, b] = numbers.slice(0, 3).map(Number);
+                              if (g > 110 && r < 120 && b < 130) return 'completed';
+                              if (r > 170 && g > 90 && g < 190 && b < 120) return 'pending';
+                              if (r > 180 && g > 120 && b < 80) return 'pending';
+                              return '';
+                            };
+                            const nodeState = node => {
+                              const label = textOf(node).toLowerCase();
+                              const style = getComputedStyle(node);
+                              const joined = [
+                                label,
+                                node.getAttribute && node.getAttribute('class'),
+                                node.getAttribute && node.getAttribute('stroke'),
+                                node.getAttribute && node.getAttribute('fill'),
+                                style.color,
+                                style.stroke,
+                                style.fill
+                              ].join(' ').toLowerCase();
+                              let pending = 0;
+                              let completed = 0;
+                              if (/clock|schedule|access[_ -]?time|pending|watch|due|timer/.test(joined)) pending += 3;
+                              if (/check|done|complete|completed|approved|verified/.test(joined)) completed += 3;
+                              for (const color of [style.color, style.stroke, style.fill, node.getAttribute && node.getAttribute('stroke'), node.getAttribute && node.getAttribute('fill')]) {
+                                const state = colorState(color);
+                                if (state === 'pending') pending += 2;
+                                if (state === 'completed') completed += 2;
+                              }
+                              if (pending > completed && pending > 0) return 'pending';
+                              if (completed > 0) return 'completed';
+                              return 'unknown';
+                            };
+                            const rowState = (row, root) => {
+                              const rowRect = row.getBoundingClientRect();
+                              const icons = Array.from(root.querySelectorAll('svg,i,mat-icon,[class*=icon],[class*=Icon],path,circle'))
+                                .filter(visible)
+                                .filter(icon => {
+                                  const rect = icon.getBoundingClientRect();
+                                  const sameBand = Math.abs((rect.top + rect.bottom) / 2 - (rowRect.top + rowRect.bottom) / 2) <= 18;
+                                  const nearLeft = rect.left <= rowRect.left + 70 || row.contains(icon);
+                                  return row.contains(icon) || (sameBand && nearLeft);
+                                });
+                              let pending = 0;
+                              let completed = 0;
+                              for (const icon of icons) {
+                                const state = nodeState(icon);
+                                if (state === 'pending') pending++;
+                                if (state === 'completed') completed++;
+                              }
+                              if (pending > completed && pending > 0) return 'pending';
+                              if (completed > 0) return 'completed';
+                              return 'unknown';
+                            };
+                            const cardCandidates = Array.from(document.querySelectorAll('section,article,div,li'))
+                              .filter(visible)
+                              .filter(el => textOf(el).toLowerCase().includes('quality policy'))
+                              .map(el => {
+                                const rect = el.getBoundingClientRect();
+                                const text = textOf(el);
+                                let score = 0;
+                                if (/^quality policy/i.test(text)) score += 100;
+                                if (/current reviewer|next reviewer|reviewer|approver/i.test(text)) score += 120;
+                                if (/view/i.test(text)) score += 20;
+                                score -= Math.min(120, text.length / 4);
+                                score -= Math.min(80, (rect.width * rect.height) / 6000);
+                                return {el, text, score};
+                              })
+                              .sort((a, b) => b.score - a.score);
+                            const root = cardCandidates.length ? cardCandidates[0].el : null;
+                            if (!root) return '';
+                            const roleText = /current reviewer|next reviewer|reviewer\\s*\\d*|approver/i;
+                            const rawRows = Array.from(root.querySelectorAll('div,li,p,tr,section,article'))
+                              .filter(visible)
+                              .map(el => ({el, text: textOf(el)}))
+                              .filter(item => roleText.test(item.text))
+                              .filter(item => item.text.length >= 8 && item.text.length <= 180)
+                              .sort((a, b) => a.text.length - b.text.length);
+                            const selected = [];
+                            const seen = new Set();
+                            for (const item of rawRows) {
+                              const text = item.text.replace(/\\s+/g, ' ').trim();
+                              const key = text.toLowerCase();
+                              if (seen.has(key)) continue;
+                              if (selected.some(existing => existing.text.toLowerCase().includes(key))) continue;
+                              seen.add(key);
+                              selected.push({
+                                text,
+                                state: rowState(item.el, root)
+                              });
+                            }
+                            return selected
+                              .map(item => item.state.toUpperCase() + '::' + item.text)
+                              .join('\\n');
+                            """);
+            return String.valueOf(rows);
+        } catch (RuntimeException exception) {
+            return "";
+        }
     }
 
     private String resolveAndApplyWorkflowParticipantsFromDocumentInformation(WorkflowUser currentOwner) {
