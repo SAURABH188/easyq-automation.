@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_WAIT_NEXT_OWNER_2026_07_14_BN";
+    private static final String QP_FLOW_CODE_VERSION = "QP_RETRY_PROCESSING_TOAST_2026_07_14_BO";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4673,7 +4673,9 @@ public class EasyQQualityPolicyTest {
         WorkflowUser recoveredOwner = lastDashboardRecoveryOwner;
         if (sameWorkflowUser(recoveredOwner, actor)) {
             Reporter.log("WORKFLOW RECOVERY: " + roleLabel + " did not find QP in Under Review first, "
-                    + "but Dashboard still shows the same owner. Retrying once after data reflection wait.", true);
+                    + "or the action did not complete, but Dashboard still shows the same owner. "
+                    + "Retrying once after data reflection wait.", true);
+            waitForReflectionDelay();
             waitForReflectionDelay();
             return performConfiguredWorkflowAction(
                     actor.username,
@@ -4752,15 +4754,17 @@ public class EasyQQualityPolicyTest {
         waitForActionCompletionAndDataLoad(roleLabel + " " + action,
                 "Quality Policy", "Under Review", "Review", "Approved", "Rejected", "Returned", "Draft", "Completed");
 
+        boolean processingError = hasQualityPolicyProcessingErrorToast();
         boolean stateReached = verifyWorkflowStateAfterAction(action, roleLabel);
         boolean ownerTransitionReached = waitForExpectedOwnerAfterWorkflowAction(username, action, roleLabel);
 
         Reporter.log("WORKFLOW EXACT: " + roleLabel + " " + action
                 + " clickedAction=" + clickedAction
                 + ", submittedAction=" + submittedAction
+                + ", processingError=" + processingError
                 + ", stateReached=" + stateReached
                 + ", ownerTransitionReached=" + ownerTransitionReached, true);
-        if (!clickedAction || !submittedAction || !stateReached || !ownerTransitionReached) {
+        if (!clickedAction || !submittedAction || processingError || !stateReached || !ownerTransitionReached) {
             return false;
         }
 
@@ -4777,6 +4781,7 @@ public class EasyQQualityPolicyTest {
                 + roleLabel + " " + action + ": " + expectedOwner.roleLabel, true);
         for (int attempt = 1; attempt <= 4; attempt++) {
             WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+            lastDashboardRecoveryOwner = dashboardOwner;
             Reporter.log("WORKFLOW RECOVERY: Expected owner wait attempt " + attempt
                     + "/4 expected=" + expectedOwner.roleLabel
                     + ", dashboardOwner=" + roleLabelOrDash(dashboardOwner), true);
@@ -4786,6 +4791,21 @@ public class EasyQQualityPolicyTest {
             waitForReflectionDelay();
         }
         return false;
+    }
+
+    private boolean hasQualityPolicyProcessingErrorToast() {
+        String bodyText = getBodyText();
+        boolean hasError = containsAnyIgnoreCase(bodyText,
+                "Something went wrong while processing the quality policy",
+                "Something went wrong",
+                "Please try again",
+                "processing the quality policy");
+        if (hasError) {
+            Reporter.log("WORKFLOW RECOVERY: EasyQ displayed processing error toast. "
+                    + "The action did not complete, so current owner will be retried/resumed. Visible text: "
+                    + shortBodyText(), true);
+        }
+        return hasError;
     }
 
     private WorkflowUser expectedOwnerAfterWorkflowAction(String username, String action, String roleLabel) {
