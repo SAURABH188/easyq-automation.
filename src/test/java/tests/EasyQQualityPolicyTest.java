@@ -44,8 +44,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_OPTIONAL_PDF_DOWNLOAD_2026_07_14_AX";
+    private static final String QP_FLOW_CODE_VERSION = "QP_POST_ACTION_COMPLETION_WAIT_2026_07_14_AY";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
+    private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
     private static final Duration OPTIONAL_PDF_DOWNLOAD_TIMEOUT = Duration.ofSeconds(8);
 
@@ -1785,7 +1786,8 @@ public class EasyQQualityPolicyTest {
         if (submitted) {
             waitForWorkflowPopupToCloseOrReviewState();
             confirmIfPrompt();
-            waitForPageToContain("Under Review", "Review", "Sent", "Quality Policy");
+            waitForActionCompletionAndDataLoad("Send for Review",
+                    "Under Review", "Review", "Sent", "Quality Policy");
         }
 
         Reporter.log("WORKFLOW EXACT: reviewers=" + reviewersSelected
@@ -2480,7 +2482,10 @@ public class EasyQQualityPolicyTest {
         boolean cancelClosed = confirmed && clickCancelMoveToDraftConfirmationIfStillVisible();
         Reporter.log("WORKFLOW EXACT: Move to Draft confirmation clicked=" + confirmed
                 + ", cancelClosedPopup=" + cancelClosed, true);
-        waitForSmallDelay();
+        if (confirmed || cancelClosed) {
+            waitForActionCompletionAndDataLoad("Move to Draft",
+                    "Draft", "Save", "Send for Review", "What is the change");
+        }
         boolean draftStateVisible = waitForDraftEditor()
                 || pageContainsAny("Draft", "Save", "Send for Review", "What is the change", "Why is the change needed");
         Reporter.log("WORKFLOW EXACT: Move to Draft post-confirm Draft state visible=" + draftStateVisible
@@ -4214,7 +4219,8 @@ public class EasyQQualityPolicyTest {
         scrollActiveDialogToBottom();
         boolean submittedAction = clickWorkflowActionInDialog(action);
         confirmIfPrompt();
-        waitForSmallDelay();
+        waitForActionCompletionAndDataLoad(roleLabel + " " + action,
+                "Quality Policy", "Under Review", "Review", "Approved", "Rejected", "Returned", "Draft", "Completed");
 
         boolean stateReached = verifyWorkflowStateAfterAction(action, roleLabel);
 
@@ -6343,7 +6349,8 @@ public class EasyQQualityPolicyTest {
                 continue;
             }
             if (clickActionInside(dialog, "Yes, Move to Draft", "Move to Draft", "Confirm", "Yes", "OK", "Ok", "Submit", "Done", "Continue")) {
-                waitForSmallDelay();
+                waitForActionCompletionAndDataLoad("Confirmation prompt",
+                        "Quality Policy", "Draft", "Under Review", "Approved", "Saved", "Success");
                 return;
             }
         }
@@ -6761,6 +6768,94 @@ public class EasyQQualityPolicyTest {
         } catch (RuntimeException exception) {
             Reporter.log("WORKFLOW EXACT: QP tab content still showed loading text before action search.", true);
             return false;
+        }
+    }
+
+    private void waitForActionCompletionAndDataLoad(String actionLabel, String... expectedValues) {
+        Reporter.log("WORKFLOW EXACT: Waiting for action completion and data refresh after "
+                + actionLabel + ".", true);
+        waitForPageReadyState();
+        waitForBusyIndicatorsToClear(Duration.ofSeconds(30));
+        if (expectedValues != null && expectedValues.length > 0) {
+            waitForPageToContain(expectedValues);
+        }
+        waitForPostActionDataLoadDelay();
+        waitForPageReadyState();
+        waitForBusyIndicatorsToClear(Duration.ofSeconds(10));
+    }
+
+    private boolean waitForBusyIndicatorsToClear(Duration timeout) {
+        try {
+            return new WebDriverWait(driver, timeout).until(currentDriver -> {
+                Object busy = ((JavascriptExecutor) currentDriver).executeScript(
+                        """
+                                const visible = el => {
+                                  if (!el) return false;
+                                  const rect = el.getBoundingClientRect();
+                                  const style = window.getComputedStyle(el);
+                                  return rect.width > 1 && rect.height > 1
+                                    && style.display !== 'none'
+                                    && style.visibility !== 'hidden'
+                                    && style.opacity !== '0';
+                                };
+                                const textOf = el => String([
+                                  el && el.innerText,
+                                  el && el.textContent,
+                                  el && el.getAttribute && el.getAttribute('aria-label'),
+                                  el && el.getAttribute && el.getAttribute('title')
+                                ].join(' ')).replace(/\\s+/g, ' ').trim().toLowerCase();
+                                const selectors = [
+                                  '.spinner',
+                                  '.loader',
+                                  '.loading',
+                                  '.progress',
+                                  '.mat-progress-spinner',
+                                  '.mat-progress-bar',
+                                  '.cdk-overlay-backdrop',
+                                  '[aria-busy=true]',
+                                  '[role=progressbar]'
+                                ];
+                                const busyNodes = Array.from(document.querySelectorAll(selectors.join(',')))
+                                  .filter(visible)
+                                  .filter(el => {
+                                    const text = textOf(el);
+                                    return !text.includes('notification') && !text.includes('comment');
+                                  });
+                                if (busyNodes.length) return true;
+                                const bodyText = textOf(document.body);
+                                return bodyText.includes('loading content')
+                                  || bodyText.includes('loading ...')
+                                  || bodyText.includes('please wait')
+                                  || bodyText.includes('saving...')
+                                  || bodyText.includes('submitting...');
+                                """);
+                return !Boolean.TRUE.equals(busy);
+            });
+        } catch (RuntimeException exception) {
+            Reporter.log("WORKFLOW EXACT: Busy/loading indicator wait ended by timeout after "
+                    + timeout.toSeconds() + "s. Continuing with post-action data wait.", true);
+            return false;
+        }
+    }
+
+    private boolean waitForPageReadyState() {
+        try {
+            return new WebDriverWait(driver, Duration.ofSeconds(15)).until(currentDriver -> {
+                Object readyState = ((JavascriptExecutor) currentDriver)
+                        .executeScript("return document.readyState");
+                return "complete".equals(String.valueOf(readyState))
+                        || "interactive".equals(String.valueOf(readyState));
+            });
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private void waitForPostActionDataLoadDelay() {
+        try {
+            Thread.sleep(POST_ACTION_DATA_LOAD_WAIT_MILLIS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
         }
     }
 
