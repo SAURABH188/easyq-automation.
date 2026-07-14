@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_DRAFT_DOWNLOAD_2026_07_14_BL";
+    private static final String QP_FLOW_CODE_VERSION = "QP_APPROVAL_ONLY_RECOVERY_2026_07_14_BM";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4445,14 +4445,16 @@ public class EasyQQualityPolicyTest {
                         "Reject",
                         workflowRoleLabel(reviewerRole, reviewer));
                 if (!rejected) {
-                    return false;
+                    return completeApprovalOnlyFromCurrentQualityPolicyState(
+                            reviewerRole + " reject failed or already moved to another owner");
                 }
 
                 if (reviewerIndex == 0) {
                     Reporter.log("WORKFLOW EXACT: Reviewer 1 rejection is confirmed in initiator Draft/Returned area.", true);
                     loginAsWorkflowAuthor();
                     if (!resubmitRejectedDraftFromVarunAccount()) {
-                        return false;
+                        return completeApprovalOnlyFromCurrentQualityPolicyState(
+                                "Reviewer 1 reject completed but Draft resubmit did not finish");
                     }
                 } else {
                     WorkflowUser previousReviewer = reviewers.get(reviewerIndex - 1);
@@ -4463,7 +4465,8 @@ public class EasyQQualityPolicyTest {
                             workflowRoleLabel(previousReviewerRole, previousReviewer)
                                     + " after " + reviewerRole + " reject");
                     if (!previousReviewerApproved) {
-                        return false;
+                        return completeApprovalOnlyFromCurrentQualityPolicyState(
+                                reviewerRole + " reject completed but previous reviewer approval did not finish");
                     }
                 }
             }
@@ -4481,7 +4484,8 @@ public class EasyQQualityPolicyTest {
             }
             if (!reviewerApproved) {
                 allReviewersApproved = false;
-                return false;
+                return completeApprovalOnlyFromCurrentQualityPolicyState(
+                        reviewerRole + " approval failed or QP already moved forward");
             }
         }
 
@@ -4504,7 +4508,8 @@ public class EasyQQualityPolicyTest {
                         workflowRoleLabel("Approver", approverUser));
             }
             if (!approverRejected) {
-                return false;
+                return completeApprovalOnlyFromCurrentQualityPolicyState(
+                        "Approver reject failed or QP already moved back to reviewer");
             }
 
             WorkflowUser postApproverRejectUser = reviewers.get(reviewers.size() - 1);
@@ -4514,7 +4519,8 @@ public class EasyQQualityPolicyTest {
                     "Approve",
                     workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject");
             if (!reviewerApprovedAfterApproverReject) {
-                return false;
+                return completeApprovalOnlyFromCurrentQualityPolicyState(
+                        "Post-approver-reject reviewer approval did not finish");
             }
         }
 
@@ -4531,9 +4537,97 @@ public class EasyQQualityPolicyTest {
                     rejectFirst ? workflowRoleLabel("Approver", approverUser) + " final approval"
                             : workflowRoleLabel("Approver", approverUser));
         }
+        if (!approverApproved) {
+            return completeApprovalOnlyFromCurrentQualityPolicyState(
+                    "Approver final approval failed or QP already moved");
+        }
 
         return allReviewersApproved && approverApproved
                 && verifyNewlyApprovedVersionAvailableFromVarun();
+    }
+
+    private boolean completeApprovalOnlyFromCurrentQualityPolicyState(String reason) {
+        Reporter.log("WORKFLOW RECOVERY: " + reason
+                + ". Not repeating completed reject/approve steps. Locating current QP owner and continuing approval-only.",
+                true);
+        waitForReflectionDelay();
+
+        if (!recoverExistingQualityPolicyAcrossWorkflowUsers()) {
+            Reporter.log("WORKFLOW RECOVERY: Could not locate current QP owner after partial action. "
+                    + "Visible text: " + shortBodyText(), true);
+            return false;
+        }
+
+        List<WorkflowUser> reviewers = activeReviewerUsers.isEmpty()
+                ? configuredWorkflowReviewers()
+                : new ArrayList<>(activeReviewerUsers);
+        WorkflowUser approverUser = workflowUserForStage("APPROVER");
+        if (approverUser == null) {
+            Reporter.log("WORKFLOW RECOVERY: Approver is unavailable after locating current QP owner.", true);
+            return false;
+        }
+
+        String resumeStage = workflowResumeStage == null || workflowResumeStage.isBlank()
+                ? "REVIEWER1"
+                : workflowResumeStage;
+        Reporter.log("WORKFLOW RECOVERY: Approval-only resume stage=" + resumeStage
+                + ", reviewers=" + reviewerListForLog(reviewers)
+                + ", approver=" + roleLabelOrDash(approverUser), true);
+
+        return approveRemainingWorkflowFromStage(resumeStage, reviewers, approverUser)
+                && verifyNewlyApprovedVersionAvailableFromVarun();
+    }
+
+    private boolean approveRemainingWorkflowFromStage(
+            String resumeStage,
+            List<WorkflowUser> reviewers,
+            WorkflowUser approverUser) {
+        int startReviewerIndex = reviewerIndexFromStage(resumeStage);
+        if ("APPROVER".equals(resumeStage)) {
+            startReviewerIndex = reviewers.size();
+        } else if (startReviewerIndex < 0) {
+            startReviewerIndex = 0;
+        }
+
+        if (startReviewerIndex > reviewers.size()) {
+            Reporter.log("WORKFLOW RECOVERY: Approval-only resume stage=" + resumeStage
+                    + " is beyond reviewer count=" + reviewers.size(), true);
+            return false;
+        }
+
+        for (int reviewerIndex = startReviewerIndex; reviewerIndex < reviewers.size(); reviewerIndex++) {
+            WorkflowUser reviewer = reviewers.get(reviewerIndex);
+            String reviewerRole = "Reviewer " + (reviewerIndex + 1);
+            boolean approved = performWorkflowActionWithNotFoundRecovery(
+                    reviewer,
+                    "Approve",
+                    workflowRoleLabel(reviewerRole, reviewer) + " approval-only recovery");
+            if (!approved && reviewerIndex > 0) {
+                approved = recoverPreviousReviewerApprovalThenRetry(
+                        reviewers.get(reviewerIndex - 1),
+                        reviewer,
+                        "Approve",
+                        workflowRoleLabel(reviewerRole, reviewer) + " approval-only recovery");
+            }
+            if (!approved) {
+                Reporter.log("WORKFLOW RECOVERY: Approval-only recovery stopped at "
+                        + workflowRoleLabel(reviewerRole, reviewer), true);
+                return false;
+            }
+        }
+
+        boolean approverApproved = performWorkflowActionWithNotFoundRecovery(
+                approverUser,
+                "Approve",
+                workflowRoleLabel("Approver", approverUser) + " approval-only recovery");
+        if (!approverApproved && !reviewers.isEmpty()) {
+            approverApproved = recoverPreviousReviewerApprovalThenRetry(
+                    reviewers.get(reviewers.size() - 1),
+                    approverUser,
+                    "Approve",
+                    workflowRoleLabel("Approver", approverUser) + " approval-only recovery");
+        }
+        return approverApproved;
     }
 
     private boolean resubmitRejectedDraftFromVarunAccount() {
