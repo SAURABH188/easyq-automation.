@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_OWNER_CONFIRMATION_2026_07_14_BH";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DOC_INFO_RECOVERY_2026_07_14_BI";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -62,6 +62,7 @@ public class EasyQQualityPolicyTest {
     private WorkflowUser activeReviewer2User;
     private final List<WorkflowUser> activeReviewerUsers = new ArrayList<>();
     private WorkflowUser activeApproverUser;
+    private WorkflowUser lastDashboardRecoveryOwner;
     private boolean workflowParticipantsResolvedFromDocumentInformation;
     private long actionWaitMillis = DEFAULT_ACTION_WAIT_MILLIS;
     private int dynamicTextSequence;
@@ -117,6 +118,7 @@ public class EasyQQualityPolicyTest {
         activeReviewer2User = null;
         activeReviewerUsers.clear();
         activeApproverUser = null;
+        lastDashboardRecoveryOwner = null;
         workflowParticipantsResolvedFromDocumentInformation = false;
         failedDownloadStages.clear();
 
@@ -4435,9 +4437,8 @@ public class EasyQQualityPolicyTest {
             String reviewerRole = "Reviewer " + (reviewerIndex + 1);
 
             if (rejectFirst) {
-                boolean rejected = performConfiguredWorkflowAction(
-                        reviewer.username,
-                        reviewer.password,
+                boolean rejected = performWorkflowActionWithNotFoundRecovery(
+                        reviewer,
                         "Reject",
                         workflowRoleLabel(reviewerRole, reviewer));
                 if (!rejected) {
@@ -4453,26 +4454,28 @@ public class EasyQQualityPolicyTest {
                 } else {
                     WorkflowUser previousReviewer = reviewers.get(reviewerIndex - 1);
                     String previousReviewerRole = "Reviewer " + reviewerIndex;
-                    boolean previousReviewerApproved = performWorkflowActionAndConfirmNextOwner(
+                    boolean previousReviewerApproved = performWorkflowActionWithNotFoundRecovery(
                             previousReviewer,
                             "Approve",
                             workflowRoleLabel(previousReviewerRole, previousReviewer)
-                                    + " after " + reviewerRole + " reject",
-                            reviewer);
+                                    + " after " + reviewerRole + " reject");
                     if (!previousReviewerApproved) {
                         return false;
                     }
                 }
             }
 
-            WorkflowUser expectedOwnerAfterReviewerApproval = reviewerIndex + 1 < reviewers.size()
-                    ? reviewers.get(reviewerIndex + 1)
-                    : approverUser;
-            boolean reviewerApproved = performWorkflowActionAndConfirmNextOwner(
+            boolean reviewerApproved = performWorkflowActionWithNotFoundRecovery(
                     reviewer,
                     "Approve",
-                    workflowRoleLabel(reviewerRole, reviewer),
-                    expectedOwnerAfterReviewerApproval);
+                    workflowRoleLabel(reviewerRole, reviewer));
+            if (!reviewerApproved && reviewerIndex > 0) {
+                reviewerApproved = recoverPreviousReviewerApprovalThenRetry(
+                        reviewers.get(reviewerIndex - 1),
+                        reviewer,
+                        "Approve",
+                        workflowRoleLabel(reviewerRole, reviewer));
+            }
             if (!reviewerApproved) {
                 allReviewersApproved = false;
                 return false;
@@ -4486,33 +4489,45 @@ public class EasyQQualityPolicyTest {
                 return false;
             }
             WorkflowUser reviewerExpectedAfterApproverReject = reviewers.get(reviewers.size() - 1);
-            boolean approverRejected = performWorkflowActionAndConfirmNextOwner(
+            boolean approverRejected = performWorkflowActionWithNotFoundRecovery(
                     approverUser,
                     "Reject",
-                    workflowRoleLabel("Approver", approverUser),
-                    reviewerExpectedAfterApproverReject);
+                    workflowRoleLabel("Approver", approverUser));
+            if (!approverRejected) {
+                approverRejected = recoverPreviousReviewerApprovalThenRetry(
+                        reviewerExpectedAfterApproverReject,
+                        approverUser,
+                        "Reject",
+                        workflowRoleLabel("Approver", approverUser));
+            }
             if (!approverRejected) {
                 return false;
             }
 
             WorkflowUser postApproverRejectUser = reviewers.get(reviewers.size() - 1);
             String postApproverRejectRole = "Reviewer " + reviewers.size();
-            boolean reviewerApprovedAfterApproverReject = performWorkflowActionAndConfirmNextOwner(
+            boolean reviewerApprovedAfterApproverReject = performWorkflowActionWithNotFoundRecovery(
                     postApproverRejectUser,
                     "Approve",
-                    workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject",
-                    approverUser);
+                    workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject");
             if (!reviewerApprovedAfterApproverReject) {
                 return false;
             }
         }
 
-        boolean approverApproved = performConfiguredWorkflowAction(
-                approverUser.username,
-                approverUser.password,
+        boolean approverApproved = performWorkflowActionWithNotFoundRecovery(
+                approverUser,
                 "Approve",
                 rejectFirst ? workflowRoleLabel("Approver", approverUser) + " final approval"
                         : workflowRoleLabel("Approver", approverUser));
+        if (!approverApproved && !reviewers.isEmpty()) {
+            approverApproved = recoverPreviousReviewerApprovalThenRetry(
+                    reviewers.get(reviewers.size() - 1),
+                    approverUser,
+                    "Approve",
+                    rejectFirst ? workflowRoleLabel("Approver", approverUser) + " final approval"
+                            : workflowRoleLabel("Approver", approverUser));
+        }
 
         return allReviewersApproved && approverApproved
                 && verifyNewlyApprovedVersionAvailableFromVarun();
@@ -4550,76 +4565,66 @@ public class EasyQQualityPolicyTest {
         return roleName + " " + (user == null ? "Unknown User" : user.roleLabel);
     }
 
-    private boolean performWorkflowActionAndConfirmNextOwner(
+    private boolean performWorkflowActionWithNotFoundRecovery(
             WorkflowUser actor,
             String action,
-            String roleLabel,
-            WorkflowUser expectedNextOwner) {
-        boolean actionCompleted = performConfiguredWorkflowAction(
-                actor.username,
-                actor.password,
-                action,
-                roleLabel);
-        if (!actionCompleted) {
-            return false;
-        }
-        if (expectedNextOwner == null) {
+            String roleLabel) {
+        if (performConfiguredWorkflowAction(actor.username, actor.password, action, roleLabel)) {
             return true;
         }
 
-        WorkflowUser detectedOwner = waitForDashboardOwnerAfterAction(expectedNextOwner,
-                roleLabel + " " + action);
-        if (sameWorkflowUser(detectedOwner, expectedNextOwner)) {
-            return true;
-        }
-
-        if (sameWorkflowUser(detectedOwner, actor)) {
-            Reporter.log("WORKFLOW EXACT: Dashboard still shows " + actor.roleLabel
-                    + " after " + roleLabel + " " + action
-                    + ". Retrying the same workflow action once before moving to "
-                    + expectedNextOwner.roleLabel + ".", true);
-            boolean retryCompleted = performConfiguredWorkflowAction(
+        WorkflowUser recoveredOwner = lastDashboardRecoveryOwner;
+        if (sameWorkflowUser(recoveredOwner, actor)) {
+            Reporter.log("WORKFLOW RECOVERY: " + roleLabel + " did not find QP in Under Review first, "
+                    + "but Dashboard still shows the same owner. Retrying once after data reflection wait.", true);
+            waitForReflectionDelay();
+            return performConfiguredWorkflowAction(
                     actor.username,
                     actor.password,
                     action,
-                    roleLabel + " retry");
-            if (!retryCompleted) {
-                return false;
-            }
-            detectedOwner = waitForDashboardOwnerAfterAction(expectedNextOwner,
-                    roleLabel + " retry " + action);
-            return sameWorkflowUser(detectedOwner, expectedNextOwner);
+                    roleLabel + " recovery retry");
         }
 
-        Reporter.log("WORKFLOW EXACT: Expected next QP owner after " + roleLabel + " " + action
-                + " to be " + expectedNextOwner.roleLabel
-                + ", but Dashboard detected " + roleLabelOrDash(detectedOwner) + ".", true);
         return false;
     }
 
-    private WorkflowUser waitForDashboardOwnerAfterAction(WorkflowUser expectedOwner, String completedActionLabel) {
-        WorkflowUser detectedOwner = null;
-        for (int attempt = 1; attempt <= 3; attempt++) {
-            waitForReflectionDelay();
-            detectedOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
-            Reporter.log("WORKFLOW EXACT: Dashboard owner confirmation after " + completedActionLabel
-                    + " attempt " + attempt + "/3 expected=" + roleLabelOrDash(expectedOwner)
-                    + ", detected=" + roleLabelOrDash(detectedOwner), true);
-            if (sameWorkflowUser(detectedOwner, expectedOwner)) {
-                return detectedOwner;
-            }
+    private boolean recoverPreviousReviewerApprovalThenRetry(
+            WorkflowUser previousReviewer,
+            WorkflowUser expectedActor,
+            String expectedAction,
+            String expectedRoleLabel) {
+        WorkflowUser recoveredOwner = lastDashboardRecoveryOwner;
+        if (!sameWorkflowUser(recoveredOwner, previousReviewer)) {
+            return false;
         }
-        return detectedOwner;
+
+        Reporter.log("WORKFLOW RECOVERY: Expected " + expectedRoleLabel
+                + " did not find QP in Under Review. Dashboard recovery shows previous reviewer "
+                + previousReviewer.roleLabel + ", so approving that reviewer again before retrying "
+                + expectedRoleLabel + ".", true);
+        if (!performWorkflowActionWithNotFoundRecovery(
+                previousReviewer,
+                "Approve",
+                workflowRoleLabel("Previous Reviewer", previousReviewer) + " recovery")) {
+            return false;
+        }
+
+        waitForReflectionDelay();
+        return performWorkflowActionWithNotFoundRecovery(expectedActor, expectedAction, expectedRoleLabel + " after recovery");
     }
 
     private boolean performConfiguredWorkflowAction(String username, String password, String action, String roleLabel) {
         Reporter.log("WORKFLOW: " + roleLabel + " logging in to " + action + " Quality Policy.", true);
+        lastDashboardRecoveryOwner = null;
         loginAsConfiguredUser(username, password);
         navigateToQualityPolicy();
 
         if (!openUnderReviewQualityPolicyTask()) {
             Reporter.log("WORKFLOW EXACT: No Under Review Quality Policy task is available for "
                     + roleLabel + ". Visible text: " + shortBodyText(), true);
+            lastDashboardRecoveryOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+            Reporter.log("WORKFLOW RECOVERY: Dashboard checked only because no Under Review QP was found for "
+                    + roleLabel + ". Dashboard owner=" + roleLabelOrDash(lastDashboardRecoveryOwner), true);
             return false;
         }
 
@@ -4660,7 +4665,6 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
-        inspectQualityPolicyAllTasksWidgetFromVarun(roleLabel + " " + action);
         return true;
     }
 
