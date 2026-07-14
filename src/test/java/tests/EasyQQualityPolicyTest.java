@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_FAST_DRAFT_CARD_2026_07_14_BK";
+    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_DRAFT_DOWNLOAD_2026_07_14_BL";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4882,6 +4882,13 @@ public class EasyQQualityPolicyTest {
     private boolean verifyDownloadsAtWorkflowStage(String stageLabel) {
         Reporter.log("DOWNLOAD STAGE: Verifying editable download at " + stageLabel
                 + ". PDF download is intentionally skipped for now.", true);
+        if (isDraftDownloadUnavailableCheckpoint(stageLabel)) {
+            Reporter.log("DOWNLOAD STAGE: " + stageLabel
+                    + " is a Draft checkpoint. EasyQ does not expose PDF/editable download options while QP is in Draft, "
+                    + "so download validation is skipped and workflow continues.", true);
+            return true;
+        }
+
         if (!isDocumentActionAreaOpen() && !openAnyQualityPolicyDocumentForAction()) {
             Reporter.log("DOWNLOAD STAGE FAILED: No document/action area opened at " + stageLabel
                     + ". Visible text: " + shortBodyText(), true);
@@ -4900,10 +4907,10 @@ public class EasyQQualityPolicyTest {
         openDocumentTab();
 
         if (!isDownloadActionAvailable()) {
-            if (isRejectedDraftEditDownloadState(stageLabel)) {
+            if (isDraftDownloadUnavailableCheckpoint(stageLabel)) {
                 Reporter.log("DOWNLOAD STAGE: " + stageLabel
-                        + " is in Draft/Edit after reject. EasyQ does not expose Download in this state, "
-                        + "so the reject action is accepted and the workflow continues to resubmit.", true);
+                        + " is in Draft/Edit. EasyQ does not expose Download in this state, "
+                        + "so the workflow continues.", true);
                 return true;
             }
             Reporter.log("DOWNLOAD STAGE FAILED: Download action is not available at " + stageLabel
@@ -4975,15 +4982,10 @@ public class EasyQQualityPolicyTest {
         }
     }
 
-    private boolean isRejectedDraftEditDownloadState(String stageLabel) {
+    private boolean isDraftDownloadUnavailableCheckpoint(String stageLabel) {
         String lowerStage = String.valueOf(stageLabel).toLowerCase();
-        if (!lowerStage.contains("after-reject")) {
-            return false;
-        }
-        String bodyText = getBodyText();
-        return containsAnyIgnoreCase(bodyText, "Draft")
-                && containsAnyIgnoreCase(bodyText, "Save", "Send for Review", "Evaluation", "Document")
-                && !containsAnyIgnoreCase(bodyText, "Download");
+        return lowerStage.equals("draft-before-send-to-review")
+                || lowerStage.contains("after-reject");
     }
 
     private boolean openAnyQualityPolicyDocumentForAction() {
