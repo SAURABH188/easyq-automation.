@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_CONTINUE_AFTER_SEND_REVIEW_2026_07_14_BJ";
+    private static final String QP_FLOW_CODE_VERSION = "QP_FAST_DRAFT_CARD_2026_07_14_BK";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4718,7 +4718,7 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean waitForRejectedQualityPolicyInVarunDraft() {
-        int maxAttempts = Math.max(3, config.getInt("explicitWait") / 5);
+        int maxAttempts = 3;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             navigateToQualityPolicy();
             boolean draftFound = openDraftOrReturnedQualityPolicyFromDraftTabOnly();
@@ -4728,7 +4728,7 @@ public class EasyQQualityPolicyTest {
             if (draftFound) {
                 return true;
             }
-            waitForReflectionDelay();
+            waitForSmallDelay();
         }
         return false;
     }
@@ -4747,11 +4747,77 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
+        if (openVisibleSavedDraftQualityPolicyCard()) {
+            return true;
+        }
+
         if (latestPolicyTitle != null && clickVisibleText(latestPolicyTitle) && waitForQualityPolicyDetail()) {
             return true;
         }
 
         return openReturnedRecordOnCurrentTab("Draft", "Rejected", "Changes Requested", "Returned", "Rework", "Saved in Draft");
+    }
+
+    private boolean openVisibleSavedDraftQualityPolicyCard() {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 1 && rect.height > 1
+                                && style.display !== 'none'
+                                && style.visibility !== 'hidden'
+                                && Number(style.opacity || 1) > 0;
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim().toLowerCase();
+                            const clickTarget = el => {
+                              const target = el.closest('button,a,[role=button],[role=link]') || el;
+                              target.scrollIntoView({block: 'center', inline: 'center'});
+                              target.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                              target.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                              target.click();
+                              return target;
+                            };
+                            const cards = Array.from(document.querySelectorAll(
+                              'section,article,li,tr,[class*=card],[class*=Card],[class*=row],[class*=item],div'
+                            )).filter(visible)
+                              .map(el => ({el, text: textOf(el), rect: el.getBoundingClientRect()}))
+                              .filter(item => item.rect.left > 90 && item.rect.top > 180)
+                              .filter(item => item.text.includes('quality policy'))
+                              .filter(item => item.text.includes('saved in draft') || item.text.includes('draft'))
+                              .filter(item => item.text.includes('view'))
+                              .sort((a, b) => {
+                                const areaA = a.rect.width * a.rect.height;
+                                const areaB = b.rect.width * b.rect.height;
+                                return areaA - areaB || a.rect.top - b.rect.top;
+                              });
+                            for (const card of cards) {
+                              const view = Array.from(card.el.querySelectorAll('button,a,[role=button],[role=link],span,div'))
+                                .filter(visible)
+                                .find(el => /^view\\s*$/i.test(textOf(el)) || textOf(el).includes('view'));
+                              if (!view) continue;
+                              const clicked = clickTarget(view);
+                              const rect = clicked.getBoundingClientRect();
+                              return 'CLICKED_SAVED_DRAFT_VIEW:' + Math.round(rect.left) + ',' + Math.round(rect.top);
+                            }
+                            return 'NO_SAVED_DRAFT_CARD';
+                            """);
+            Reporter.log("WORKFLOW EXACT: saved draft card View click result=" + result, true);
+            return String.valueOf(result).startsWith("CLICKED_SAVED_DRAFT_VIEW")
+                    && waitForQualityPolicyDetail();
+        } catch (RuntimeException exception) {
+            Reporter.log("WORKFLOW EXACT: saved draft card View click failed: "
+                    + exception.getClass().getSimpleName(), true);
+            return false;
+        }
     }
 
     private void waitForReflectionDelay() {
