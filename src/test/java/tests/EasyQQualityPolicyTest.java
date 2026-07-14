@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_POST_ACTION_COMPLETION_WAIT_2026_07_14_AY";
+    private static final String QP_FLOW_CODE_VERSION = "QP_VARUN_WIDGET_CHECK_AFTER_ACTION_2026_07_14_AZ";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4232,7 +4232,37 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
+        inspectQualityPolicyAllTasksWidgetFromVarun(roleLabel + " " + action);
         return true;
+    }
+
+    private void inspectQualityPolicyAllTasksWidgetFromVarun(String completedActionLabel) {
+        Reporter.log("WORKFLOW EXACT: After " + completedActionLabel
+                + ", logging in as Varun to inspect Dashboard > All Tasks > Quality Policy widget.", true);
+        try {
+            loginAsConfiguredUser(config.get("EASYQ_ADMIN_USERNAME"), getPassword());
+            openDashboard();
+            clickDashboardAllTasksToggle();
+            waitForActionCompletionAndDataLoad("Dashboard All Tasks QP widget after " + completedActionLabel,
+                    "Dashboard", "QMS Status", "All Tasks", "Quality Policy");
+
+            String cardText = waitForDashboardAllTasksQualityPolicyDetails();
+            String normalizedCardText = cardText.replaceAll("\\s+", " ").trim();
+            WorkflowUser detectedOwner = currentOwnerFromQualityPolicyWidgetText(cardText);
+            Reporter.log("WORKFLOW EXACT: Varun Dashboard All Tasks QP widget after "
+                    + completedActionLabel + " = " + normalizedCardText, true);
+            if (detectedOwner == null) {
+                Reporter.log("WORKFLOW EXACT: Varun Dashboard All Tasks QP widget after "
+                        + completedActionLabel + " did not show a pending reviewer/approver owner.", true);
+            } else {
+                Reporter.log("WORKFLOW EXACT: Varun Dashboard All Tasks QP widget detected owner after "
+                        + completedActionLabel + " = " + detectedOwner.roleLabel, true);
+            }
+        } catch (RuntimeException exception) {
+            Reporter.log("WORKFLOW EXACT: Varun Dashboard All Tasks QP widget inspection failed after "
+                    + completedActionLabel + ": " + exception.getClass().getSimpleName()
+                    + " - " + exception.getMessage(), true);
+        }
     }
 
     private boolean verifyWorkflowStateAfterAction(String action, String roleLabel) {
