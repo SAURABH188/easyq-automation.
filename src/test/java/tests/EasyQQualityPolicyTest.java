@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_LOGIN_WAIT_GRACE_2026_07_14_BF";
+    private static final String QP_FLOW_CODE_VERSION = "QP_MODULE_TAB_CLICK_2026_07_14_BG";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -897,11 +897,7 @@ public class EasyQQualityPolicyTest {
         if (openQualityPolicyListRouteDirectly()) {
             return;
         }
-        if (openQualityPolicyFromDashboardWidget()) {
-            return;
-        }
-
-        Assert.fail("Quality Policy module was not opened from hamburger, direct route, or dashboard widget. URL: "
+        Assert.fail("Quality Policy module was not opened from hamburger/sidebar or direct route. URL: "
                 + safeCurrentUrl() + " | Visible text: " + shortBodyText());
     }
 
@@ -5704,7 +5700,7 @@ public class EasyQQualityPolicyTest {
                               (el && (el.innerText || el.textContent || el.getAttribute('aria-label')
                                 || el.getAttribute('title'))) || ''
                             ).replace(/\\s+/g, ' ').trim().toLowerCase();
-                            const inChrome = el => !!el.closest('nav, aside, header, [class*=sidebar], [class*=menu]');
+                            const inChrome = el => !!el.closest('nav, aside, header, [class*=sidebar], [class*=Sidebar]');
                             const clickTarget = el => {
                               const target = el.closest('button,a,[role=tab],[role=button]') || el;
                               target.scrollIntoView({block: 'center', inline: 'center'});
@@ -5750,10 +5746,39 @@ public class EasyQQualityPolicyTest {
                             """,
                     label);
             Reporter.log("WORKFLOW EXACT: QP tab click result for " + label + ": " + clicked, true);
-            return String.valueOf(clicked).startsWith("CLICKED_TAB");
+            if (String.valueOf(clicked).startsWith("CLICKED_TAB")) {
+                return true;
+            }
         } catch (RuntimeException exception) {
-            return false;
+            Reporter.log("WORKFLOW EXACT: JS QP tab click failed for " + label + ": "
+                    + exception.getClass().getSimpleName(), true);
         }
+
+        By exactTab = By.xpath("//*[self::button or self::a or @role='tab' or @role='button' or self::span or self::div]"
+                + "[normalize-space()='" + label + "' and not(ancestor::aside) and not(ancestor::nav) and not(ancestor::header)]");
+        for (WebElement tab : driver.findElements(exactTab)) {
+            if (!isUsable(tab)) {
+                continue;
+            }
+            try {
+                scrollIntoView(tab);
+                WebElement target = tab;
+                List<WebElement> buttonAncestors = tab.findElements(By.xpath(
+                        "./ancestor-or-self::*[self::button or self::a or @role='tab' or @role='button'][1]"));
+                if (!buttonAncestors.isEmpty()) {
+                    target = buttonAncestors.get(0);
+                }
+                safeClick(target);
+                waitForSmallDelay();
+                Reporter.log("WORKFLOW EXACT: QP tab click fallback succeeded for " + label, true);
+                return true;
+            } catch (RuntimeException ignored) {
+                // Try the next visible tab candidate.
+            }
+        }
+        Reporter.log("WORKFLOW EXACT: QP tab click fallback failed for " + label
+                + ". Visible text: " + shortBodyText(), true);
+        return false;
     }
 
     private boolean clickVisibleRecordViewButton() {
