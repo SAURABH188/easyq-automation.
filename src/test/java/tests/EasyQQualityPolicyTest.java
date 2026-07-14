@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_VARUN_WIDGET_CHECK_AFTER_ACTION_2026_07_14_AZ";
+    private static final String QP_FLOW_CODE_VERSION = "QP_CREATE_AFTER_NO_DASHBOARD_PENDING_2026_07_14_BA";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -794,7 +794,17 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
-        Reporter.log("WORKFLOW: Dashboard has no pending QP details. Continuing normal Approved/Draft process.", true);
+        Reporter.log("WORKFLOW: Dashboard has no pending QP details. Trying to create a new QP draft from Varun account first.", true);
+        if (!qualityPolicyDraftCreatedInCurrentTest && createDraftFromApprovedQualityPolicy()) {
+            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
+            if (submitted) {
+                workflowResumeStage = "REVIEWER1";
+            }
+            return submitted;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Varun new QP draft creation did not complete. "
+                + "Checking Draft tabs under Varun and configured Doc Controller accounts.", true);
         if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
             return true;
         }
@@ -813,19 +823,6 @@ public class EasyQQualityPolicyTest {
             if (!updateCurrentDraftEvaluationFromPdfFlow()) {
                 return false;
             }
-            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
-            if (submitted) {
-                workflowResumeStage = "REVIEWER1";
-            }
-            return submitted;
-        }
-
-        if (qualityPolicyDraftCreatedInCurrentTest) {
-            Reporter.log("WORKFLOW EXACT: A QP draft was already created in this test run; blocking second Move to Draft.", true);
-            return false;
-        }
-
-        if (createDraftFromApprovedQualityPolicy()) {
             boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
             if (submitted) {
                 workflowResumeStage = "REVIEWER1";
@@ -877,10 +874,12 @@ public class EasyQQualityPolicyTest {
 
     private boolean createDraftFromApprovedQualityPolicy() {
         Reporter.log("WORKFLOW EXACT: Varun -> QP -> Approved -> View -> Document -> Move to Draft.", true);
+        activeAuthorUser = configuredVarunAuthorUser();
         if (qualityPolicyDraftCreatedInCurrentTest) {
             Reporter.log("WORKFLOW EXACT: Move to Draft skipped because this test already created one QP draft.", true);
             return openDraftOrReturnedQualityPolicy() && updateCurrentDraftEvaluationFromPdfFlow();
         }
+        loginAsConfiguredUser(activeAuthorUser.username, activeAuthorUser.password);
         navigateToQualityPolicy();
 
         if (!openApprovedQualityPolicy()) {
@@ -911,6 +910,14 @@ public class EasyQQualityPolicyTest {
         waitForPageToContain("Draft", "Evaluation", "Document", "Save");
 
         return updateCurrentDraftEvaluationFromPdfFlow();
+    }
+
+    private WorkflowUser configuredVarunAuthorUser() {
+        return new WorkflowUser(
+                configValue("EASYQ_ADMIN_USERNAME", validEmail),
+                getPassword(),
+                configValue("EASYQ_QP_DRAFTER_NAME", "Varun Trivedi"),
+                "varun", "varun trivedi");
     }
 
     private boolean recoverExistingQualityPolicyAcrossWorkflowUsers() {
