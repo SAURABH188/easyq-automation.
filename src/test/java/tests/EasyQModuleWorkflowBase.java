@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,7 +36,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public abstract class EasyQModuleWorkflowBase {
-    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_QP_STYLE_FLOW_2026_07_13_A";
+    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_RA_QP_RECOVERY_2026_07_14_B";
 
     private static final class DownloadFileState {
         private final long size;
@@ -48,6 +49,22 @@ public abstract class EasyQModuleWorkflowBase {
 
         private static DownloadFileState from(Path file) throws IOException {
             return new DownloadFileState(Files.size(file), Files.getLastModifiedTime(file).toMillis());
+        }
+    }
+
+    private static final class WorkflowActor {
+        private final String stage;
+        private final String username;
+        private final String password;
+        private final String roleLabel;
+        private final String[] aliases;
+
+        private WorkflowActor(String stage, String username, String password, String roleLabel, String... aliases) {
+            this.stage = stage;
+            this.username = username;
+            this.password = password;
+            this.roleLabel = roleLabel;
+            this.aliases = aliases;
         }
     }
 
@@ -298,7 +315,7 @@ public abstract class EasyQModuleWorkflowBase {
         navigateToModule();
 
         if (!ensureUnderReviewFromApprovedOrExistingDraft()) {
-            return false;
+            return completeApprovalOnlyFromCurrentModuleState("Initial review setup failed or module already moved");
         }
 
         if (rejectFirst) {
@@ -308,12 +325,14 @@ public abstract class EasyQModuleWorkflowBase {
                     "Reviewer 1",
                     "Reject");
             if (!rejected) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Reviewer 1 reject failed or " + moduleLabel() + " already moved to another owner");
             }
 
             loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
             if (!resubmitRejectedDraftFromVarunAccount("Reviewer 1 reject")) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Reviewer 1 reject completed but Draft resubmit did not finish");
             }
         }
 
@@ -323,7 +342,8 @@ public abstract class EasyQModuleWorkflowBase {
                 "Reviewer 1",
                 "Approve");
         if (!reviewer1Done) {
-            return false;
+            return completeApprovalOnlyFromCurrentModuleState(
+                    "Reviewer 1 approval failed or " + moduleLabel() + " already moved forward");
         }
 
         if (rejectFirst) {
@@ -333,7 +353,8 @@ public abstract class EasyQModuleWorkflowBase {
                     "Reviewer 2",
                     "Reject");
             if (!reviewer2Rejected) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Reviewer 2 reject failed or " + moduleLabel() + " already moved back");
             }
 
             reviewer1Done = performWorkflowAction(
@@ -342,7 +363,8 @@ public abstract class EasyQModuleWorkflowBase {
                     "Reviewer 1 after Reviewer 2 reject",
                     "Approve");
             if (!reviewer1Done) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Reviewer 2 reject completed but Reviewer 1 re-approval did not finish");
             }
         }
 
@@ -352,7 +374,8 @@ public abstract class EasyQModuleWorkflowBase {
                 "Reviewer 2",
                 "Approve");
         if (!reviewer2Done) {
-            return false;
+            return completeApprovalOnlyFromCurrentModuleState(
+                    "Reviewer 2 approval failed or " + moduleLabel() + " already moved forward");
         }
 
         if (rejectFirst) {
@@ -362,7 +385,8 @@ public abstract class EasyQModuleWorkflowBase {
                     "Approver",
                     "Reject");
             if (!approverRejected) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Approver reject failed or " + moduleLabel() + " already moved back");
             }
 
             reviewer2Done = performWorkflowAction(
@@ -371,7 +395,8 @@ public abstract class EasyQModuleWorkflowBase {
                     "Reviewer 2 after Approver reject",
                     "Approve");
             if (!reviewer2Done) {
-                return false;
+                return completeApprovalOnlyFromCurrentModuleState(
+                        "Approver reject completed but Reviewer 2 re-approval did not finish");
             }
         }
 
@@ -380,8 +405,375 @@ public abstract class EasyQModuleWorkflowBase {
                 requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
                 rejectFirst ? "Approver final approval" : "Approver",
                 "Approve");
+        if (!approverDone) {
+            return completeApprovalOnlyFromCurrentModuleState(
+                    "Approver final approval failed or " + moduleLabel() + " already moved");
+        }
 
         return reviewer1Done && reviewer2Done && approverDone;
+    }
+
+    private boolean completeApprovalOnlyFromCurrentModuleState(String reason) {
+        Reporter.log("WORKFLOW RECOVERY: " + moduleLabel() + " - " + reason
+                + ". Not repeating completed rejection/approval steps. Locating current owner and continuing approvals only.",
+                true);
+        waitForReflectionDelay();
+
+        String currentStage = locateCurrentWorkflowStage();
+        if (currentStage == null && tryResubmitDraftFromKnownAuthors()) {
+            currentStage = "REVIEWER1";
+        }
+        if (currentStage == null) {
+            Reporter.log("WORKFLOW RECOVERY: Could not locate active " + moduleLabel()
+                    + " in Dashboard, Under Review, or Draft. Visible text: " + shortBodyText(), true);
+            return false;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: " + moduleLabel()
+                + " approval-only recovery will continue from stage=" + currentStage, true);
+        return approveRemainingWorkflowFromStage(currentStage);
+    }
+
+    private boolean approveRemainingWorkflowFromStage(String currentStage) {
+        List<WorkflowActor> actors = configuredWorkflowActors();
+        int startIndex = workflowActorIndexForStage(currentStage, actors);
+        if (startIndex < 0) {
+            Reporter.log("WORKFLOW RECOVERY: Unknown workflow stage for " + moduleLabel()
+                    + ": " + currentStage, true);
+            return false;
+        }
+
+        for (int actorIndex = startIndex; actorIndex < actors.size(); actorIndex++) {
+            WorkflowActor actor = actors.get(actorIndex);
+            boolean approved = performWorkflowAction(
+                    actor.username,
+                    actor.password,
+                    actor.roleLabel + " approval-only recovery",
+                    "Approve");
+            if (!approved) {
+                Reporter.log("WORKFLOW RECOVERY: Approval-only recovery stopped at "
+                        + actor.roleLabel + " for " + moduleLabel(), true);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String locateCurrentWorkflowStage() {
+        WorkflowActor dashboardOwner = detectPendingModuleOwnerFromDashboardAllTasks();
+        if (dashboardOwner != null && tryOpenPendingModuleForActor(dashboardOwner)) {
+            return dashboardOwner.stage;
+        }
+
+        for (WorkflowActor actor : configuredWorkflowActors()) {
+            if (dashboardOwner != null && sameWorkflowActor(actor, dashboardOwner)) {
+                continue;
+            }
+            if (tryOpenPendingModuleForActor(actor)) {
+                return actor.stage;
+            }
+        }
+        return null;
+    }
+
+    private boolean tryOpenPendingModuleForActor(WorkflowActor actor) {
+        Reporter.log("WORKFLOW RECOVERY: Checking " + actor.roleLabel
+                + " account for pending " + moduleLabel() + ".", true);
+        try {
+            loginAsConfiguredUser(actor.username, actor.password);
+            navigateToModule();
+            boolean opened = openUnderReviewTask();
+            Reporter.log("WORKFLOW RECOVERY: " + moduleLabel() + " pending task under "
+                    + actor.roleLabel + " opened=" + opened + ". Visible text: " + shortBodyText(), true);
+            return opened;
+        } catch (RuntimeException | AssertionError exception) {
+            Reporter.log("WORKFLOW RECOVERY: " + actor.roleLabel + " check failed for "
+                    + moduleLabel() + ": " + exception.getClass().getSimpleName()
+                    + " - " + exception.getMessage(), true);
+            return false;
+        }
+    }
+
+    private boolean tryResubmitDraftFromKnownAuthors() {
+        Reporter.log("WORKFLOW RECOVERY: Dashboard/Under Review did not show pending " + moduleLabel()
+                + ". Checking Draft under Admin and Doc Controller accounts.", true);
+        for (WorkflowActor author : configuredDraftAuthorActors()) {
+            try {
+                loginAsConfiguredUser(author.username, author.password);
+                navigateToModule();
+                if (!openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested", "Saved in Draft")) {
+                    continue;
+                }
+                Reporter.log("WORKFLOW RECOVERY: Draft " + moduleLabel()
+                        + " found under " + author.roleLabel + ". Updating and sending for review.", true);
+                fillModuleFormWithAutomationData();
+                boolean saved = clickButtonByText("Save as Draft", "Save Draft", "Save", "Update", "Done")
+                        || pageContainsAny("Draft", "Saved", moduleLabel(), latestRecordTitle());
+                return saved && submitCurrentDraftForReviewWithConfiguredUsers();
+            } catch (RuntimeException | AssertionError exception) {
+                Reporter.log("WORKFLOW RECOVERY: Draft check skipped for " + author.roleLabel
+                        + " due to " + exception.getClass().getSimpleName()
+                        + " - " + exception.getMessage(), true);
+            }
+        }
+        return false;
+    }
+
+    private List<WorkflowActor> configuredWorkflowActors() {
+        List<WorkflowActor> actors = new ArrayList<>();
+        actors.add(new WorkflowActor(
+                "REVIEWER1",
+                workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
+                reviewer1Password(),
+                "Reviewer 1 Varun",
+                workflowValue("REVIEWER1_NAME", "Varun Trivedi"), "Varun", "Varun Trivedi"));
+        actors.add(new WorkflowActor(
+                "REVIEWER2",
+                workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
+                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
+                "Reviewer 2 Pavan",
+                workflowValue("REVIEWER2_NAME", "Pavan Prabhu"), "Pavan", "Pavan Prabhu"));
+        actors.add(new WorkflowActor(
+                "APPROVER",
+                workflowUserName("APPROVER_USERNAME", configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "")),
+                requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
+                "Approver Amit",
+                workflowValue("APPROVER_NAME", "Amit Karane"), "Amit", "Amit Karane", "Amit Karni"));
+        return actors;
+    }
+
+    private List<WorkflowActor> configuredDraftAuthorActors() {
+        List<WorkflowActor> authors = new ArrayList<>();
+        authors.add(new WorkflowActor(
+                "AUTHOR",
+                configValue("EASYQ_ADMIN_USERNAME", validEmail),
+                getPassword(),
+                "Admin Varun",
+                "Varun", "Varun Trivedi"));
+        addDraftAuthorActorIfConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_AMITT_USERNAME", "ameetraj001@gmail.com",
+                "EASYQ_DOC_CONTROLLER_AMITT_PASSWORD",
+                "Doc Controller Amitt Demo",
+                "Amitt", "Amitt Demo", "Amit Demo");
+        addDraftAuthorActorIfConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_ANASUYA_USERNAME", "anasuya@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_ANASUYA_PASSWORD",
+                "Doc Controller Anasuya Roy",
+                "Anasuya", "Anasuya Roy");
+        addDraftAuthorActorIfConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_USERNAME", "iam.pavanprabhu@gmail.com",
+                "EASYQ_DOC_CONTROLLER_PASSWORD",
+                "Doc Controller Pavan",
+                "Pavan", "Pavan Prabhu");
+        addDraftAuthorActorIfConfigured(authors,
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_USERNAME", "shubham@easyqsolutions.com",
+                "EASYQ_DOC_CONTROLLER_SHUBHAM_PASSWORD",
+                "Doc Controller Shubham",
+                "Shubham", "Shubham Tiwari");
+        return authors;
+    }
+
+    private void addDraftAuthorActorIfConfigured(
+            List<WorkflowActor> authors,
+            String usernameKey,
+            String defaultUsername,
+            String passwordKey,
+            String roleLabel,
+            String... aliases) {
+        String username = configValue(usernameKey, defaultUsername);
+        String password = config.getOptionalSecret(passwordKey);
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            Reporter.log("WORKFLOW RECOVERY: " + roleLabel
+                    + " draft check skipped because " + passwordKey + " is not configured.", true);
+            return;
+        }
+        WorkflowActor actor = new WorkflowActor("AUTHOR", username.trim(), password.trim(), roleLabel, aliases);
+        if (authors.stream().noneMatch(existing -> sameWorkflowActor(existing, actor))) {
+            authors.add(actor);
+        }
+    }
+
+    private int workflowActorIndexForStage(String stage, List<WorkflowActor> actors) {
+        for (int actorIndex = 0; actorIndex < actors.size(); actorIndex++) {
+            if (actors.get(actorIndex).stage.equalsIgnoreCase(String.valueOf(stage))) {
+                return actorIndex;
+            }
+        }
+        return -1;
+    }
+
+    private boolean sameWorkflowActor(WorkflowActor first, WorkflowActor second) {
+        if (first == null || second == null) {
+            return false;
+        }
+        return first.username.equalsIgnoreCase(second.username)
+                || first.roleLabel.equalsIgnoreCase(second.roleLabel);
+    }
+
+    private WorkflowActor detectPendingModuleOwnerFromDashboardAllTasks() {
+        try {
+            loginAsConfiguredUser(configValue("EASYQ_ADMIN_USERNAME", validEmail), getPassword());
+            openDashboard();
+            clickDashboardAllTasksToggle();
+            String cardText = waitForDashboardAllTasksModuleDetails();
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks " + moduleLabel()
+                    + " widget text=" + cardText.replaceAll("\\s+", " ").trim(), true);
+            return currentOwnerFromModuleWidgetText(cardText);
+        } catch (RuntimeException | AssertionError exception) {
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks inspection failed for "
+                    + moduleLabel() + ": " + exception.getClass().getSimpleName()
+                    + " - " + exception.getMessage(), true);
+            return null;
+        }
+    }
+
+    private void openDashboard() {
+        String appRoot = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        driver.get(appRoot + "dashboard");
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait"))).until(currentDriver ->
+                    pageContainsAny("Dashboard", "QMS Status", "All Tasks", "My Tasks"));
+        } catch (RuntimeException ignored) {
+            // The widget wait below will report the visible state.
+        }
+        waitForSmallDelay();
+    }
+
+    private void clickDashboardAllTasksToggle() {
+        try {
+            Object clicked = ((JavascriptExecutor) driver).executeScript(
+                    "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();"
+                            + "const allTasks = Array.from(document.querySelectorAll('button,a,[role=button],div,span'))"
+                            + "  .filter(visible).find(el => textOf(el) === 'all tasks');"
+                            + "if (!allTasks) return false;"
+                            + "const target = allTasks.closest('button,a,[role=button]') || allTasks;"
+                            + "target.click();"
+                            + "return true;");
+            Reporter.log("WORKFLOW RECOVERY: Dashboard All Tasks click for " + moduleLabel()
+                    + " result=" + clicked, true);
+        } catch (RuntimeException ignored) {
+            clickButtonByText("All Tasks");
+        }
+        waitForSmallDelay();
+    }
+
+    private String waitForDashboardAllTasksModuleDetails() {
+        long deadline = System.currentTimeMillis() + Duration.ofSeconds(config.getInt("explicitWait")).toMillis();
+        long noPendingFirstSeenAt = 0L;
+        String lastText = "";
+        while (System.currentTimeMillis() < deadline) {
+            String cardText = dashboardModuleCardText().replaceAll("\\s+", " ").trim();
+            boolean hasWorkflowDetails = containsAnyIgnoreCase(cardText,
+                    "Current Reviewer", "Next Reviewer", "Reviewer", "Approver", "Due", "Due Today")
+                    && !containsAnyIgnoreCase(cardText, "No Pending Items");
+            boolean hasNoPendingState = containsAnyIgnoreCase(cardText, "No Pending Items");
+            boolean loading = containsAnyIgnoreCase(getBodyText(), "Loading ...", "Loading...");
+            if (hasWorkflowDetails && !loading) {
+                return cardText;
+            }
+            if (hasNoPendingState && !loading) {
+                if (noPendingFirstSeenAt == 0L) {
+                    noPendingFirstSeenAt = System.currentTimeMillis();
+                }
+                if (System.currentTimeMillis() - noPendingFirstSeenAt >= Duration.ofSeconds(6).toMillis()) {
+                    return cardText;
+                }
+            } else {
+                noPendingFirstSeenAt = 0L;
+            }
+            lastText = cardText.isBlank() ? lastText : cardText;
+            waitForSmallDelay();
+        }
+        return lastText;
+    }
+
+    private String dashboardModuleCardText() {
+        try {
+            Object text = ((JavascriptExecutor) driver).executeScript(
+                    "const moduleName = String(arguments[0] || '').toLowerCase();"
+                            + "const visible = el => {"
+                            + "  const r = el.getBoundingClientRect();"
+                            + "  const s = getComputedStyle(el);"
+                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
+                            + "};"
+                            + "const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();"
+                            + "const candidates = Array.from(document.querySelectorAll('section,article,div,li'))"
+                            + "  .filter(visible)"
+                            + "  .filter(el => textOf(el).toLowerCase().includes(moduleName))"
+                            + "  .map(el => {"
+                            + "    const rect = el.getBoundingClientRect();"
+                            + "    const text = textOf(el);"
+                            + "    let score = 0;"
+                            + "    if (text.toLowerCase().startsWith(moduleName)) score += 120;"
+                            + "    if (/current reviewer|next reviewer|reviewer|approver|due/i.test(text)) score += 100;"
+                            + "    if (/view/i.test(text)) score += 20;"
+                            + "    score -= Math.min(120, text.length / 4);"
+                            + "    score -= Math.min(80, (rect.width * rect.height) / 6000);"
+                            + "    return {text, score};"
+                            + "  }).sort((a, b) => b.score - a.score);"
+                            + "return candidates.length ? candidates[0].text : '';",
+                    moduleLabel());
+            return String.valueOf(text);
+        } catch (RuntimeException exception) {
+            return "";
+        }
+    }
+
+    private WorkflowActor currentOwnerFromModuleWidgetText(String cardText) {
+        String normalizedText = String.valueOf(cardText).replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+        if (normalizedText.isBlank() || normalizedText.contains("no pending items")) {
+            return null;
+        }
+
+        String currentOwner = "";
+        Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s*:?\\s+([a-z ]+?)(?:\\s+next reviewer|\\s+approver|\\s+due|\\s+view|\\s+\\d|$)")
+                .matcher(normalizedText);
+        if (currentReviewerMatcher.find()) {
+            currentOwner = currentReviewerMatcher.group(1).trim();
+        }
+        if (currentOwner.isBlank()) {
+            Matcher approverMatcher = Pattern.compile("approver\\s*:?\\s+([a-z ]+?)(?:\\s+due|\\s+view|\\s+\\d|$)")
+                    .matcher(normalizedText);
+            if (approverMatcher.find()) {
+                currentOwner = approverMatcher.group(1).trim();
+            }
+        }
+
+        WorkflowActor matchedActor = knownWorkflowActorByName(currentOwner);
+        if (matchedActor == null) {
+            matchedActor = knownWorkflowActorByName(normalizedText);
+        }
+        if (matchedActor != null) {
+            Reporter.log("WORKFLOW RECOVERY: Dashboard detected current " + moduleLabel()
+                    + " owner=" + matchedActor.roleLabel, true);
+        }
+        return matchedActor;
+    }
+
+    private WorkflowActor knownWorkflowActorByName(String text) {
+        String normalizedText = String.valueOf(text).toLowerCase(Locale.ROOT);
+        if (normalizedText.isBlank()) {
+            return null;
+        }
+        for (WorkflowActor actor : configuredWorkflowActors()) {
+            for (String alias : actor.aliases) {
+                if (alias != null && !alias.isBlank()
+                        && normalizedText.contains(alias.toLowerCase(Locale.ROOT))) {
+                    return actor;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void waitForReflectionDelay() {
+        waitForSmallDelay();
+        waitForSmallDelay();
     }
 
     protected boolean verifyModulePostApprovalEvidence() {

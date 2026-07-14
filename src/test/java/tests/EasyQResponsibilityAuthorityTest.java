@@ -302,7 +302,14 @@ public class EasyQResponsibilityAuthorityTest extends EasyQModuleWorkflowBase {
                 "Responsibility and Authority should support reviewer verification and approver approval workflow");
     }
 
-    @Test(priority = 39, description = "PDF Flow - Verify approved Responsibility Authority download restricted to Admin Doc Controller")
+    @Test(priority = 39, description = "PDF Flow - Verify Responsibility Authority reject and approve workflow for all reviewers and approver")
+    // Manual Test Case ID: TC456-TC465
+    public void verifyPdfFlowResponsibilityAuthorityRejectThenApproveFullWorkflow() {
+        Assert.assertTrue(runApprovalPath(true) && verifyModulePostApprovalEvidence(),
+                "Responsibility and Authority should verify rejection for Reviewer 1, Reviewer 2, and Approver before final approval, then verify approved/obsolete evidence");
+    }
+
+    @Test(priority = 40, description = "PDF Flow - Verify approved Responsibility Authority download restricted to Admin Doc Controller")
     // Manual Test Case ID: TC437-TC471
     public void verifyPdfFlowApprovedResponsibilityAuthorityDownloadRestriction() {
         Assert.assertTrue(isElementDisplayed(downloadButton) || hasModuleDataOrPageLoaded(),
