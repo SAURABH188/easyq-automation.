@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_MODULE_TAB_CLICK_2026_07_14_BG";
+    private static final String QP_FLOW_CODE_VERSION = "QP_OWNER_CONFIRMATION_2026_07_14_BH";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4453,23 +4453,26 @@ public class EasyQQualityPolicyTest {
                 } else {
                     WorkflowUser previousReviewer = reviewers.get(reviewerIndex - 1);
                     String previousReviewerRole = "Reviewer " + reviewerIndex;
-                    boolean previousReviewerApproved = performConfiguredWorkflowAction(
-                            previousReviewer.username,
-                            previousReviewer.password,
+                    boolean previousReviewerApproved = performWorkflowActionAndConfirmNextOwner(
+                            previousReviewer,
                             "Approve",
                             workflowRoleLabel(previousReviewerRole, previousReviewer)
-                                    + " after " + reviewerRole + " reject");
+                                    + " after " + reviewerRole + " reject",
+                            reviewer);
                     if (!previousReviewerApproved) {
                         return false;
                     }
                 }
             }
 
-            boolean reviewerApproved = performConfiguredWorkflowAction(
-                    reviewer.username,
-                    reviewer.password,
+            WorkflowUser expectedOwnerAfterReviewerApproval = reviewerIndex + 1 < reviewers.size()
+                    ? reviewers.get(reviewerIndex + 1)
+                    : approverUser;
+            boolean reviewerApproved = performWorkflowActionAndConfirmNextOwner(
+                    reviewer,
                     "Approve",
-                    workflowRoleLabel(reviewerRole, reviewer));
+                    workflowRoleLabel(reviewerRole, reviewer),
+                    expectedOwnerAfterReviewerApproval);
             if (!reviewerApproved) {
                 allReviewersApproved = false;
                 return false;
@@ -4477,27 +4480,28 @@ public class EasyQQualityPolicyTest {
         }
 
         if (rejectFirst) {
-            boolean approverRejected = performConfiguredWorkflowAction(
-                    approverUser.username,
-                    approverUser.password,
-                    "Reject",
-                    workflowRoleLabel("Approver", approverUser));
-            if (!approverRejected) {
-                return false;
-            }
-
             if (reviewers.isEmpty()) {
                 Reporter.log("WORKFLOW RECOVERY: Approver rejected, but no previous reviewer is available "
                         + "for re-approval.", true);
                 return false;
             }
+            WorkflowUser reviewerExpectedAfterApproverReject = reviewers.get(reviewers.size() - 1);
+            boolean approverRejected = performWorkflowActionAndConfirmNextOwner(
+                    approverUser,
+                    "Reject",
+                    workflowRoleLabel("Approver", approverUser),
+                    reviewerExpectedAfterApproverReject);
+            if (!approverRejected) {
+                return false;
+            }
+
             WorkflowUser postApproverRejectUser = reviewers.get(reviewers.size() - 1);
             String postApproverRejectRole = "Reviewer " + reviewers.size();
-            boolean reviewerApprovedAfterApproverReject = performConfiguredWorkflowAction(
-                    postApproverRejectUser.username,
-                    postApproverRejectUser.password,
+            boolean reviewerApprovedAfterApproverReject = performWorkflowActionAndConfirmNextOwner(
+                    postApproverRejectUser,
                     "Approve",
-                    workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject");
+                    workflowRoleLabel(postApproverRejectRole, postApproverRejectUser) + " after Approver reject",
+                    approverUser);
             if (!reviewerApprovedAfterApproverReject) {
                 return false;
             }
@@ -4544,6 +4548,68 @@ public class EasyQQualityPolicyTest {
 
     private String workflowRoleLabel(String roleName, WorkflowUser user) {
         return roleName + " " + (user == null ? "Unknown User" : user.roleLabel);
+    }
+
+    private boolean performWorkflowActionAndConfirmNextOwner(
+            WorkflowUser actor,
+            String action,
+            String roleLabel,
+            WorkflowUser expectedNextOwner) {
+        boolean actionCompleted = performConfiguredWorkflowAction(
+                actor.username,
+                actor.password,
+                action,
+                roleLabel);
+        if (!actionCompleted) {
+            return false;
+        }
+        if (expectedNextOwner == null) {
+            return true;
+        }
+
+        WorkflowUser detectedOwner = waitForDashboardOwnerAfterAction(expectedNextOwner,
+                roleLabel + " " + action);
+        if (sameWorkflowUser(detectedOwner, expectedNextOwner)) {
+            return true;
+        }
+
+        if (sameWorkflowUser(detectedOwner, actor)) {
+            Reporter.log("WORKFLOW EXACT: Dashboard still shows " + actor.roleLabel
+                    + " after " + roleLabel + " " + action
+                    + ". Retrying the same workflow action once before moving to "
+                    + expectedNextOwner.roleLabel + ".", true);
+            boolean retryCompleted = performConfiguredWorkflowAction(
+                    actor.username,
+                    actor.password,
+                    action,
+                    roleLabel + " retry");
+            if (!retryCompleted) {
+                return false;
+            }
+            detectedOwner = waitForDashboardOwnerAfterAction(expectedNextOwner,
+                    roleLabel + " retry " + action);
+            return sameWorkflowUser(detectedOwner, expectedNextOwner);
+        }
+
+        Reporter.log("WORKFLOW EXACT: Expected next QP owner after " + roleLabel + " " + action
+                + " to be " + expectedNextOwner.roleLabel
+                + ", but Dashboard detected " + roleLabelOrDash(detectedOwner) + ".", true);
+        return false;
+    }
+
+    private WorkflowUser waitForDashboardOwnerAfterAction(WorkflowUser expectedOwner, String completedActionLabel) {
+        WorkflowUser detectedOwner = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            waitForReflectionDelay();
+            detectedOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+            Reporter.log("WORKFLOW EXACT: Dashboard owner confirmation after " + completedActionLabel
+                    + " attempt " + attempt + "/3 expected=" + roleLabelOrDash(expectedOwner)
+                    + ", detected=" + roleLabelOrDash(detectedOwner), true);
+            if (sameWorkflowUser(detectedOwner, expectedOwner)) {
+                return detectedOwner;
+            }
+        }
+        return detectedOwner;
     }
 
     private boolean performConfiguredWorkflowAction(String username, String password, String action, String roleLabel) {
