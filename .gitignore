@@ -1,5 +1,6 @@
 # Maven build output
 target/
+.m2-repo/
 
 # TestNG reports and screenshots
 test-output/
