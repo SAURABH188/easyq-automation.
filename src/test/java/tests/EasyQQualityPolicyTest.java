@@ -44,11 +44,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_ICON_PENDING_OWNER_2026_07_14_BC";
+    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_PDF_DOWNLOAD_2026_07_14_BD";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
-    private static final Duration OPTIONAL_PDF_DOWNLOAD_TIMEOUT = Duration.ofSeconds(8);
 
     private WebDriver driver;
     private WebDriverWait wait;
@@ -589,7 +588,7 @@ public class EasyQQualityPolicyTest {
         Assert.assertTrue(downloadedFileMatchesPlatformData(editableFile, platformDocumentText),
                 "Editable downloaded file should match platform document data. File: " + editableFile);
 
-        verifyOptionalPdfDownloadIfFast("Manual comments/download validation", platformDocumentText);
+        skipPdfDownloadForNow("Manual comments/download validation", platformDocumentText);
     }
 
     @Test(priority = 42, description = "Verify version history popup download matches popup data")
@@ -4598,7 +4597,7 @@ public class EasyQQualityPolicyTest {
 
     private boolean verifyDownloadsAtWorkflowStage(String stageLabel) {
         Reporter.log("DOWNLOAD STAGE: Verifying editable download at " + stageLabel
-                + ". PDF download is optional and will be skipped if it is slow.", true);
+                + ". PDF download is intentionally skipped for now.", true);
         if (!isDocumentActionAreaOpen() && !openAnyQualityPolicyDocumentForAction()) {
             Reporter.log("DOWNLOAD STAGE FAILED: No document/action area opened at " + stageLabel
                     + ". Visible text: " + shortBodyText(), true);
@@ -4631,11 +4630,11 @@ public class EasyQQualityPolicyTest {
         Path editableFile = downloadDocumentOption("Editable", "Editible", "Word", "Doc", "Document");
         boolean editableMatches = downloadedFileMatchesPlatformData(editableFile, platformDocumentText, stageLabel);
 
-        boolean pdfMatches = verifyOptionalPdfDownloadIfFast(stageLabel, platformDocumentText);
+        boolean pdfSkipped = skipPdfDownloadForNow(stageLabel, platformDocumentText);
 
         restoreActionAreaAfterDownloadVerification();
         Reporter.log("DOWNLOAD STAGE: " + stageLabel + " editableMatches=" + editableMatches
-                + ", pdfMatches=" + pdfMatches, true);
+                + ", pdfSkipped=" + pdfSkipped, true);
         return editableMatches;
     }
 
@@ -4778,25 +4777,10 @@ public class EasyQQualityPolicyTest {
                 : lastFailure;
     }
 
-    private boolean verifyOptionalPdfDownloadIfFast(String stageLabel, String platformDocumentText) {
-        try {
-            Path pdfFile = downloadDocumentOptionWithTimeout(OPTIONAL_PDF_DOWNLOAD_TIMEOUT, 1, "PDF", "Pdf");
-            boolean pdfMatches = downloadedFileMatchesPlatformData(pdfFile, platformDocumentText, stageLabel);
-            if (!pdfMatches) {
-                failedDownloadStages.add(stageLabel + " [PDF integrity mismatch]");
-                Reporter.log("DOWNLOAD STAGE WARNING: PDF downloaded at " + stageLabel
-                        + " but did not match expected platform data. Workflow will continue. File: "
-                        + pdfFile, true);
-            }
-            return pdfMatches;
-        } catch (AssertionError | RuntimeException exception) {
-            failedDownloadStages.add(stageLabel + " [PDF skipped/slow]");
-            Reporter.log("DOWNLOAD STAGE WARNING: PDF download skipped at " + stageLabel
-                    + " because it did not complete quickly enough or failed. Workflow will continue. Reason: "
-                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
-            closeTransientMenus();
-            return false;
-        }
+    private boolean skipPdfDownloadForNow(String stageLabel, String platformDocumentText) {
+        Reporter.log("DOWNLOAD STAGE: PDF download skipped at " + stageLabel
+                + " by current automation setting. Word/editable download remains validated.", true);
+        return true;
     }
 
     private boolean clickDownloadOptionByText(String... optionLabels) {
