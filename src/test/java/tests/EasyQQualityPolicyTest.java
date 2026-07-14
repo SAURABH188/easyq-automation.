@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_APPROVAL_ONLY_RECOVERY_2026_07_14_BM";
+    private static final String QP_FLOW_CODE_VERSION = "QP_WAIT_NEXT_OWNER_2026_07_14_BN";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4753,16 +4753,90 @@ public class EasyQQualityPolicyTest {
                 "Quality Policy", "Under Review", "Review", "Approved", "Rejected", "Returned", "Draft", "Completed");
 
         boolean stateReached = verifyWorkflowStateAfterAction(action, roleLabel);
+        boolean ownerTransitionReached = waitForExpectedOwnerAfterWorkflowAction(username, action, roleLabel);
 
         Reporter.log("WORKFLOW EXACT: " + roleLabel + " " + action
                 + " clickedAction=" + clickedAction
                 + ", submittedAction=" + submittedAction
-                + ", stateReached=" + stateReached, true);
-        if (!clickedAction || !submittedAction || !stateReached) {
+                + ", stateReached=" + stateReached
+                + ", ownerTransitionReached=" + ownerTransitionReached, true);
+        if (!clickedAction || !submittedAction || !stateReached || !ownerTransitionReached) {
             return false;
         }
 
         return true;
+    }
+
+    private boolean waitForExpectedOwnerAfterWorkflowAction(String username, String action, String roleLabel) {
+        WorkflowUser expectedOwner = expectedOwnerAfterWorkflowAction(username, action, roleLabel);
+        if (expectedOwner == null) {
+            return true;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Waiting until QP moves to expected next owner after "
+                + roleLabel + " " + action + ": " + expectedOwner.roleLabel, true);
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+            Reporter.log("WORKFLOW RECOVERY: Expected owner wait attempt " + attempt
+                    + "/4 expected=" + expectedOwner.roleLabel
+                    + ", dashboardOwner=" + roleLabelOrDash(dashboardOwner), true);
+            if (sameWorkflowUser(dashboardOwner, expectedOwner)) {
+                return true;
+            }
+            waitForReflectionDelay();
+        }
+        return false;
+    }
+
+    private WorkflowUser expectedOwnerAfterWorkflowAction(String username, String action, String roleLabel) {
+        WorkflowUser actor = workflowUserByUsernameOrLabel(username, roleLabel);
+        List<WorkflowUser> reviewers = activeReviewerUsers.isEmpty()
+                ? configuredWorkflowReviewers()
+                : new ArrayList<>(activeReviewerUsers);
+        WorkflowUser approver = workflowUserForStage("APPROVER");
+
+        if ("Approve".equalsIgnoreCase(action)) {
+            for (int reviewerIndex = 0; reviewerIndex < reviewers.size(); reviewerIndex++) {
+                if (!sameWorkflowUser(actor, reviewers.get(reviewerIndex))) {
+                    continue;
+                }
+                if (reviewerIndex + 1 < reviewers.size()) {
+                    return reviewers.get(reviewerIndex + 1);
+                }
+                return approver;
+            }
+            return null;
+        }
+
+        if ("Reject".equalsIgnoreCase(action)) {
+            for (int reviewerIndex = 0; reviewerIndex < reviewers.size(); reviewerIndex++) {
+                if (!sameWorkflowUser(actor, reviewers.get(reviewerIndex))) {
+                    continue;
+                }
+                return reviewerIndex == 0 ? null : reviewers.get(reviewerIndex - 1);
+            }
+            if (sameWorkflowUser(actor, approver) && !reviewers.isEmpty()) {
+                return reviewers.get(reviewers.size() - 1);
+            }
+        }
+
+        return null;
+    }
+
+    private WorkflowUser workflowUserByUsernameOrLabel(String username, String roleLabel) {
+        for (WorkflowUser user : knownWorkflowUsers()) {
+            if (user.username.equalsIgnoreCase(String.valueOf(username))) {
+                return user;
+            }
+            if (workflowUserNameMatches(user, normalizeComparableText(roleLabel))) {
+                return user;
+            }
+        }
+        return new WorkflowUser(
+                String.valueOf(username),
+                "",
+                String.valueOf(roleLabel),
+                String.valueOf(roleLabel));
     }
 
     private void inspectQualityPolicyAllTasksWidgetFromVarun(String completedActionLabel) {
