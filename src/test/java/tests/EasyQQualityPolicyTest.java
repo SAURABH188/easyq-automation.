@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_LOGIN_RETRY_AFTER_2FA_2026_07_14_BE";
+    private static final String QP_FLOW_CODE_VERSION = "QP_LOGIN_WAIT_GRACE_2026_07_14_BF";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -560,6 +560,7 @@ public class EasyQQualityPolicyTest {
     @Test(priority = 40, description = "PDF Flow - Verify Quality Policy rejection then approval workflow")
     // Manual Test Case ID: TC390-TC397
     public void verifyPdfFlowRejectThenApproveQualityPolicyWorkflow() {
+        assertSetupReadyForWorkflow();
         Reporter.log("WORKFLOW EXACT: Running Quality Policy PDF flow with code version "
                 + QP_FLOW_CODE_VERSION, true);
         Assert.assertTrue(runQualityPolicyApprovalPath(true),
@@ -605,6 +606,11 @@ public class EasyQQualityPolicyTest {
         Assert.assertTrue(verifyApprovedAndObsoleteSectionsAreViewModeOnly(),
                 "Approved and Obsolete Quality Policy records should be view-only for Evaluation and Document Information. "
                         + "Visible text: " + shortBodyText());
+    }
+
+    private void assertSetupReadyForWorkflow() {
+        Assert.assertTrue(setupFailureMessage == null || setupFailureMessage.isBlank(),
+                "Quality Policy setup did not complete before workflow execution: " + setupFailureMessage);
     }
 
     private void loginWithValidCredentials() {
@@ -663,7 +669,7 @@ public class EasyQQualityPolicyTest {
         waitForSmallDelay();
         email.sendKeys(username);
         waitForSmallDelay();
-        WebElement passwordFieldElement = driver.findElement(passwordField);
+        WebElement passwordFieldElement = wait.until(ExpectedConditions.visibilityOfElementLocated(passwordField));
         waitForSmallDelay();
         passwordFieldElement.clear();
         waitForSmallDelay();
@@ -675,35 +681,78 @@ public class EasyQQualityPolicyTest {
     }
 
     private void waitForLoginToReachApplication(String username) {
-        try {
-            new WebDriverWait(driver, Duration.ofSeconds(config.getInt("explicitWait"))).until(currentDriver ->
-                    isLoggedInApplicationShell() || isTwoFactorSetupPage() || isOnLoginPage());
-        } catch (RuntimeException exception) {
-            throw new IllegalStateException("Login did not finish loading for " + username
-                    + ". URL: " + safeCurrentUrl() + " | Visible text: " + shortBodyText(), exception);
-        }
+        long timeoutMillis = Math.max(Duration.ofSeconds(config.getInt("explicitWait")).toMillis(), 30000L);
+        long loginPageGraceMillis = Math.min(12000L, timeoutMillis - 1000L);
+        long startedAt = System.currentTimeMillis();
+        RuntimeException lastException = null;
 
-        if (isLoggedInApplicationShell()) {
-            return;
-        }
+        while (System.currentTimeMillis() - startedAt < timeoutMillis) {
+            try {
+                if (isLoggedInApplicationShell()) {
+                    return;
+                }
 
-        if (isTwoFactorSetupPage()) {
-            Reporter.log("LOGIN: " + username + " landed on two-factor setup. Trying to dismiss/skip setup.", true);
-            if (dismissTwoFactorSetupIfPossible() && isLoggedInApplicationShell()) {
-                return;
+                if (isTwoFactorSetupPage()) {
+                    Reporter.log("LOGIN: " + username
+                            + " landed on two-factor setup. Trying to dismiss/skip setup.", true);
+                    if (dismissTwoFactorSetupIfPossible() && isLoggedInApplicationShell()) {
+                        return;
+                    }
+                    openDashboard();
+                    if (isLoggedInApplicationShell()) {
+                        return;
+                    }
+                    throw new IllegalStateException("Login for " + username
+                            + " is blocked on two-factor setup. URL: " + safeCurrentUrl()
+                            + " | Visible text: " + shortBodyText());
+                }
+
+                if (isOnLoginPage()
+                        && System.currentTimeMillis() - startedAt >= loginPageGraceMillis
+                        && loginPageLooksSettledAfterSubmit()) {
+                    break;
+                }
+            } catch (RuntimeException exception) {
+                lastException = exception;
             }
+
+            waitForLoginPollDelay();
+        }
+
+        if (!isOnLoginPage() && !isTwoFactorSetupPage()) {
             openDashboard();
             if (isLoggedInApplicationShell()) {
                 return;
             }
-            throw new IllegalStateException("Login for " + username
-                    + " is blocked on two-factor setup. URL: " + safeCurrentUrl()
-                    + " | Visible text: " + shortBodyText());
         }
 
-        throw new IllegalStateException("Login for " + username
-                + " returned to login page or did not reach dashboard. URL: " + safeCurrentUrl()
-                + " | Visible text: " + shortBodyText());
+        String message = "Login for " + username
+                + " did not reach dashboard/app shell after submit. URL: " + safeCurrentUrl()
+                + " | Visible text: " + shortBodyText();
+        if (lastException != null) {
+            throw new IllegalStateException(message, lastException);
+        }
+        throw new IllegalStateException(message);
+    }
+
+    private boolean loginPageLooksSettledAfterSubmit() {
+        String bodyText = getBodyText();
+        if (containsAnyIgnoreCase(bodyText, "Loading", "Please wait", "Signing in", "Submitting")) {
+            return false;
+        }
+        return true;
+    }
+
+    private void waitForLoginPollDelay() {
+        if (actionWaitMillis > 0) {
+            waitForSmallDelay();
+            return;
+        }
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private boolean isRecoverableLoginAttemptFailure(Throwable exception) {
