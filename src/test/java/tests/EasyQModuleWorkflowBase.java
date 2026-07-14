@@ -36,7 +36,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public abstract class EasyQModuleWorkflowBase {
-    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_RA_QP_RECOVERY_2026_07_14_B";
+    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_RA_SHORT_REVIEW_COMMENT_2026_07_14_C";
 
     private static final class DownloadFileState {
         private final long size;
@@ -2002,8 +2002,69 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private void fillReviewRemarks(String action, String roleLabel) {
-        String remarks = uniqueWorkflowText(roleLabel + " " + action, moduleLabel() + " review remark");
+        String remarks = shortReviewRemark(action, roleLabel);
         fillControlsByContext(remarks, "Remark", "Comment", "Reason", "Review", "Approval", "Observation");
+    }
+
+    private String shortReviewRemark(String action, String roleLabel) {
+        dynamicTextSequence++;
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMddHHmmss"));
+        String actionToken = compactToken(action, 8).toLowerCase(Locale.ROOT);
+        String text = moduleShortCode() + " " + actionToken + " | "
+                + compactWorkflowRole(roleLabel) + " | " + timestamp + " | s" + dynamicTextSequence;
+        return text.length() <= 95 ? text : text.substring(0, 95);
+    }
+
+    private String moduleShortCode() {
+        String lower = moduleLabel().toLowerCase(Locale.ROOT);
+        if (lower.contains("objective")) {
+            return "QO";
+        }
+        if (lower.contains("responsibility") || lower.contains("authority")) {
+            return "RA";
+        }
+        if (lower.contains("policy")) {
+            return "QP";
+        }
+        String compact = moduleLabel().replaceAll("[^A-Za-z0-9]+", "").toUpperCase(Locale.ROOT);
+        if (compact.isBlank()) {
+            return "MOD";
+        }
+        return compact.length() <= 4 ? compact : compact.substring(0, 4);
+    }
+
+    private String compactWorkflowRole(String roleLabel) {
+        String lower = String.valueOf(roleLabel == null ? "" : roleLabel).toLowerCase(Locale.ROOT);
+        if (lower.contains("reviewer 1") || lower.contains("r1")) {
+            return "R1";
+        }
+        if (lower.contains("reviewer 2") || lower.contains("r2")) {
+            return "R2";
+        }
+        if (lower.contains("approver")) {
+            return "A";
+        }
+        if (lower.contains("varun")) {
+            return "R1";
+        }
+        if (lower.contains("pavan")) {
+            return "R2";
+        }
+        if (lower.contains("amit")) {
+            return "A";
+        }
+        return compactToken(roleLabel, 16);
+    }
+
+    private String compactToken(String value, int maxLength) {
+        String token = String.valueOf(value == null ? "" : value)
+                .replaceAll("[^A-Za-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (token.isBlank()) {
+            return "NA";
+        }
+        return token.length() <= maxLength ? token : token.substring(0, maxLength).trim();
     }
 
     private String uniqueWorkflowText(String stageLabel, String purposeLabel) {

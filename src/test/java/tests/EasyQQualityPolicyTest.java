@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_RETRY_PROCESSING_TOAST_2026_07_14_BO";
+    private static final String QP_FLOW_CODE_VERSION = "QP_SHORT_REVIEW_COMMENT_2026_07_14_BP";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -6555,9 +6555,51 @@ public class EasyQQualityPolicyTest {
     }
 
     private void fillReviewRemarks(String action, String roleLabel) {
-        String remarks = uniqueWorkflowText(roleLabel + " " + action, "QP "
-                + action.toLowerCase() + " remark");
+        String remarks = shortReviewRemark(action, roleLabel);
         fillControlsByContext(remarks, "Add Comments", "Add comment", "Remark", "Comment", "Reason", "Review", "Approval", "Observation");
+    }
+
+    private String shortReviewRemark(String action, String roleLabel) {
+        dynamicTextSequence++;
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMddHHmmss"));
+        String actionToken = compactToken(action, 8).toLowerCase(Locale.ROOT);
+        String text = "QP " + actionToken + " | " + compactWorkflowRole(roleLabel)
+                + " | " + timestamp + " | s" + dynamicTextSequence;
+        return text.length() <= 95 ? text : text.substring(0, 95);
+    }
+
+    private String compactWorkflowRole(String roleLabel) {
+        String lower = String.valueOf(roleLabel == null ? "" : roleLabel).toLowerCase(Locale.ROOT);
+        if (lower.contains("reviewer 1") || lower.contains("r1")) {
+            return "R1";
+        }
+        if (lower.contains("reviewer 2") || lower.contains("r2")) {
+            return "R2";
+        }
+        if (lower.contains("approver")) {
+            return "A";
+        }
+        if (lower.contains("varun")) {
+            return "R1";
+        }
+        if (lower.contains("pavan")) {
+            return "R2";
+        }
+        if (lower.contains("amit")) {
+            return "A";
+        }
+        return compactToken(roleLabel, 16);
+    }
+
+    private String compactToken(String value, int maxLength) {
+        String token = String.valueOf(value == null ? "" : value)
+                .replaceAll("[^A-Za-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (token.isBlank()) {
+            return "NA";
+        }
+        return token.length() <= maxLength ? token : token.substring(0, maxLength).trim();
     }
 
     private String uniqueWorkflowText(String stageLabel, String purposeLabel) {
