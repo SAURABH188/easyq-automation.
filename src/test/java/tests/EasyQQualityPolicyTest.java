@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DOC_INFO_RECOVERY_2026_07_14_BI";
+    private static final String QP_FLOW_CODE_VERSION = "QP_CONTINUE_AFTER_SEND_REVIEW_2026_07_14_BJ";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4397,7 +4397,10 @@ public class EasyQQualityPolicyTest {
         if (!ensureUnderReviewPolicyFromApprovedOrExistingDraft()) {
             return false;
         }
-        if (workflowPreconditionHandled("No Quality Policy record is available for reviewer/approver workflow")) {
+        if (hasNoActionablePolicyRecord() && workflowShouldContinueAfterReviewPrepared()) {
+            Reporter.log("WORKFLOW EXACT: Current page shows no actionable QP record, but review workflow is already "
+                    + "prepared/submitted. Continuing to reviewer/approver flow instead of ending the test.", true);
+        } else if (workflowPreconditionHandled("No Quality Policy record is available for reviewer/approver workflow")) {
             return true;
         }
 
@@ -7281,6 +7284,14 @@ public class EasyQQualityPolicyTest {
         Reporter.log("WORKFLOW PRECONDITION: " + reason
                 + ". Current environment shows no actionable QP record, so empty state is handled.", true);
         return true;
+    }
+
+    private boolean workflowShouldContinueAfterReviewPrepared() {
+        return qualityPolicyDraftCreatedInCurrentTest
+                || workflowResumeStage != null && !workflowResumeStage.isBlank()
+                || workflowParticipantsResolvedFromDocumentInformation
+                || !activeReviewerUsers.isEmpty()
+                || activeApproverUser != null;
     }
 
     private boolean isOnLoginPage() {
