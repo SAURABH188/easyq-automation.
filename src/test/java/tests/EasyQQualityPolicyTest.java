@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_SHORT_REVIEW_COMMENT_2026_07_14_BP";
+    private static final String QP_FLOW_CODE_VERSION = "QP_CANCEL_MOVE_TO_DRAFT_POPUP_2026_07_15_BQ";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -2843,14 +2843,23 @@ public class EasyQQualityPolicyTest {
 
     private boolean confirmMoveToDraftPrompt() {
         boolean confirmed = clickYesMoveToDraftConfirmation();
+        boolean draftStateAfterYes = false;
+        if (confirmed) {
+            waitForActionCompletionAndDataLoad("Move to Draft confirmation",
+                    "Draft", "Save", "Send for Review", "What is the change");
+            draftStateAfterYes = waitForDraftEditor()
+                    || pageContainsAny("Draft", "Save", "Send for Review", "What is the change");
+        }
         boolean cancelClosed = confirmed && clickCancelMoveToDraftConfirmationIfStillVisible();
         Reporter.log("WORKFLOW EXACT: Move to Draft confirmation clicked=" + confirmed
+                + ", draftStateAfterYes=" + draftStateAfterYes
                 + ", cancelClosedPopup=" + cancelClosed, true);
         if (confirmed || cancelClosed) {
             waitForActionCompletionAndDataLoad("Move to Draft",
                     "Draft", "Save", "Send for Review", "What is the change");
         }
-        boolean draftStateVisible = waitForDraftEditor()
+        boolean draftStateVisible = draftStateAfterYes
+                || waitForDraftEditor()
                 || pageContainsAny("Draft", "Save", "Send for Review", "What is the change", "Why is the change needed");
         Reporter.log("WORKFLOW EXACT: Move to Draft post-confirm Draft state visible=" + draftStateVisible
                 + ". Visible text: " + shortBodyText(), true);
@@ -2918,7 +2927,8 @@ public class EasyQQualityPolicyTest {
     private boolean clickCancelMoveToDraftConfirmationIfStillVisible() {
         waitForSmallDelay();
         try {
-            Object result = ((JavascriptExecutor) driver).executeScript(
+            Object result = new WebDriverWait(driver, Duration.ofSeconds(8)).until(currentDriver ->
+                    ((JavascriptExecutor) currentDriver).executeScript(
                     """
                             const visible = el => {
                               if (!el) return false;
@@ -2959,7 +2969,7 @@ public class EasyQQualityPolicyTest {
                             cancel.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
                             cancel.click();
                             return 'CLICKED_CANCEL_AFTER_YES:' + textOf(cancel);
-                            """);
+                            """));
             Reporter.log("WORKFLOW EXACT: Move to Draft post-Yes cancel result=" + result, true);
             return String.valueOf(result).startsWith("CLICKED_CANCEL_AFTER_YES");
         } catch (RuntimeException exception) {
