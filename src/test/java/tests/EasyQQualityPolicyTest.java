@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_VARUN_DASHBOARD_FIRST_2026_07_15_BW";
+    private static final String QP_FLOW_CODE_VERSION = "QP_WAIT_AMIT_UNDER_REVIEW_REFLECTION_2026_07_15_BY";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -1180,28 +1180,75 @@ public class EasyQQualityPolicyTest {
         if (!tryLoginAsRecoveryCandidate(workflowUser, "pending Under Review user search")) {
             return false;
         }
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            Reporter.log("WORKFLOW RECOVERY: Pending QP reflection attempt " + attempt
+                    + " for " + workflowUser.roleLabel + ".", true);
+            if (openPendingQualityPolicyFromDashboardWidgetForUser(workflowUser)) {
+                return true;
+            }
+            try {
+                navigateToQualityPolicy();
+                if (openUnderReviewQualityPolicyTask()) {
+                    String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
+                    if (resolvedStage == null) {
+                        Reporter.log("WORKFLOW RECOVERY: QP opened for " + workflowUser.roleLabel
+                                + " but Document Information did not identify this user's reviewer/approver role. "
+                                + "Visible text: " + shortBodyText(), true);
+                        return false;
+                    }
+                    workflowResumeStage = resolvedStage;
+                    Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
+                            + ". Document Information resolved stage=" + workflowResumeStage, true);
+                    return true;
+                }
+            } catch (AssertionError | RuntimeException exception) {
+                Reporter.log("WORKFLOW RECOVERY: " + workflowUser.roleLabel
+                        + " pending QP attempt " + attempt + " could not open/verify QP. Reason: "
+                        + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            }
+            if (attempt < 4) {
+                Reporter.log("WORKFLOW RECOVERY: QP not visible yet for " + workflowUser.roleLabel
+                        + ". Waiting for beta data reflection before retry.", true);
+                waitForReflectionDelay();
+            }
+        }
+        Reporter.log("WORKFLOW RECOVERY: Pending QP was not visible for " + workflowUser.roleLabel
+                + " after reflection retries. Visible text: " + shortBodyText(), true);
+        return false;
+    }
+
+    private boolean openPendingQualityPolicyFromDashboardWidgetForUser(WorkflowUser workflowUser) {
+        Reporter.log("WORKFLOW RECOVERY: Trying Dashboard QP widget View for "
+                + workflowUser.roleLabel + " before QP module tabs.", true);
         try {
-            navigateToQualityPolicy();
+            openDashboard();
+            if (!openQualityPolicyFromDashboardWidget()) {
+                return false;
+            }
+            if (!(waitForDocumentActionArea() || waitForQualityPolicyDetail())) {
+                Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget View for "
+                        + workflowUser.roleLabel + " did not open a QP detail/action page. Visible text: "
+                        + shortBodyText(), true);
+                return false;
+            }
+            String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
+            if (resolvedStage == null) {
+                Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget opened a QP for "
+                        + workflowUser.roleLabel
+                        + ", but Document Information did not identify this user as active. Visible text: "
+                        + shortBodyText(), true);
+                return false;
+            }
+            workflowResumeStage = resolvedStage;
+            Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget opened pending QP for "
+                    + workflowUser.roleLabel + ". resolvedStage=" + workflowResumeStage, true);
+            return true;
         } catch (AssertionError | RuntimeException exception) {
-            Reporter.log("WORKFLOW RECOVERY: " + workflowUser.roleLabel
-                    + " skipped because Quality Policy could not be opened. Reason: "
+            Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget View failed for "
+                    + workflowUser.roleLabel + ": "
                     + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
             return false;
         }
-        if (!openUnderReviewQualityPolicyTask()) {
-            return false;
-        }
-        String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(workflowUser);
-        if (resolvedStage == null) {
-            Reporter.log("WORKFLOW RECOVERY: QP opened for " + workflowUser.roleLabel
-                    + " but Document Information did not identify this user's reviewer/approver role. "
-                    + "Visible text: " + shortBodyText(), true);
-            return false;
-        }
-        workflowResumeStage = resolvedStage;
-        Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
-                + ". Document Information resolved stage=" + workflowResumeStage, true);
-        return true;
     }
 
     private boolean tryLoginAsRecoveryCandidate(WorkflowUser workflowUser, String searchContext) {
