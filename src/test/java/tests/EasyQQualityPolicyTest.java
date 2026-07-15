@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_CANCEL_MOVE_TO_DRAFT_POPUP_2026_07_15_BQ";
+    private static final String QP_FLOW_CODE_VERSION = "QP_UNDER_REVIEW_DIRECT_OWNER_2026_07_15_BR";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -943,44 +943,18 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean ensureUnderReviewPolicyFromApprovedOrExistingDraft() {
-        Reporter.log("WORKFLOW: Preparing QP review cycle. First check Dashboard All Tasks QP widget.", true);
-        Boolean dashboardResumeResult = tryResumeQualityPolicyFromDashboardAllTasksFirst();
-        if (Boolean.TRUE.equals(dashboardResumeResult)) {
+        Reporter.log("WORKFLOW: Preparing QP review cycle. Checking Under Review and Draft directly before Dashboard.", true);
+
+        if (tryOpenPendingQualityPolicyAcrossKnownUsers()) {
             return true;
         }
-        if (Boolean.FALSE.equals(dashboardResumeResult)) {
-            return false;
-        }
 
-        Reporter.log("WORKFLOW: Dashboard has no pending QP details. Trying to create a new QP draft from Varun account first.", true);
-        if (!qualityPolicyDraftCreatedInCurrentTest && createDraftFromApprovedQualityPolicy()) {
-            boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
-            if (submitted) {
-                workflowResumeStage = "REVIEWER1";
-            }
-            return submitted;
-        }
-
-        Reporter.log("WORKFLOW RECOVERY: Varun new QP draft creation did not complete. "
-                + "Checking Draft tabs under Varun and configured Doc Controller accounts.", true);
         if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
             return true;
         }
 
-        navigateToQualityPolicy();
-
-        if (openUnderReviewQualityPolicyTask()) {
-            Reporter.log("WORKFLOW EXACT: Existing Under Review QP is available; no new draft will be created.", true);
-            workflowResumeStage = "REVIEWER1";
-            return true;
-        }
-
-        navigateToQualityPolicy();
-        if (openDraftOrReturnedQualityPolicy()) {
-            Reporter.log("WORKFLOW EXACT: Existing Draft/Rejected QP opened; reusing it instead of creating another draft.", true);
-            if (!updateCurrentDraftEvaluationFromPdfFlow()) {
-                return false;
-            }
+        Reporter.log("WORKFLOW: No existing Draft/Under Review QP found directly. Trying to create a new QP draft from Varun account.", true);
+        if (!qualityPolicyDraftCreatedInCurrentTest && createDraftFromApprovedQualityPolicy()) {
             boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
             if (submitted) {
                 workflowResumeStage = "REVIEWER1";
@@ -1022,6 +996,19 @@ public class EasyQQualityPolicyTest {
 
         Reporter.log("WORKFLOW RECOVERY: Dashboard says QP is pending, but script could not open it for "
                 + "Varun, Pavan, or Amit. Stopping before creating another draft.", true);
+        return false;
+    }
+
+    private boolean tryOpenPendingQualityPolicyAcrossKnownUsers() {
+        Reporter.log("WORKFLOW RECOVERY: Checking Under Review directly for configured workflow users.", true);
+        for (WorkflowUser user : knownWorkflowUsers()) {
+            if (tryOpenPendingQualityPolicyForUser(user)) {
+                Reporter.log("WORKFLOW RECOVERY: Direct Under Review search found QP owner="
+                        + user.roleLabel + ", resolvedStage=" + workflowResumeStage, true);
+                return true;
+            }
+        }
+        Reporter.log("WORKFLOW RECOVERY: Direct Under Review search did not find QP under configured users.", true);
         return false;
     }
 
@@ -1079,12 +1066,9 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean recoverExistingQualityPolicyAcrossWorkflowUsers() {
-        Reporter.log("WORKFLOW RECOVERY: Searching existing QP owner from Dashboard All Tasks and configured users.", true);
+        Reporter.log("WORKFLOW RECOVERY: Searching existing QP from Draft/Under Review directly before Dashboard fallback.", true);
 
-        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
-        if (dashboardOwner != null && tryOpenPendingQualityPolicyForUser(dashboardOwner)) {
-            Reporter.log("WORKFLOW RECOVERY: Resuming QP from dashboard detected owner="
-                    + dashboardOwner.roleLabel, true);
+        if (tryOpenPendingQualityPolicyAcrossKnownUsers()) {
             return true;
         }
 
@@ -1092,15 +1076,12 @@ public class EasyQQualityPolicyTest {
             return true;
         }
 
-        for (WorkflowUser user : knownWorkflowUsers()) {
-            if (dashboardOwner != null && sameWorkflowUser(user, dashboardOwner)) {
-                continue;
-            }
-            if (tryOpenPendingQualityPolicyForUser(user)) {
-                Reporter.log("WORKFLOW RECOVERY: Resuming QP after direct user search. owner="
-                        + user.roleLabel + ", resolvedStage=" + workflowResumeStage, true);
-                return true;
-            }
+        Reporter.log("WORKFLOW RECOVERY: Direct Draft/Under Review search failed. Using Dashboard All Tasks only as fallback.", true);
+        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+        if (dashboardOwner != null && tryOpenPendingQualityPolicyForUser(dashboardOwner)) {
+            Reporter.log("WORKFLOW RECOVERY: Resuming QP from Dashboard fallback owner="
+                    + dashboardOwner.roleLabel, true);
+            return true;
         }
 
         Reporter.log("WORKFLOW RECOVERY: No existing Draft/Under Review QP was found for Varun, Pavan, or Amit.", true);
@@ -4787,18 +4768,29 @@ public class EasyQQualityPolicyTest {
             return true;
         }
 
-        Reporter.log("WORKFLOW RECOVERY: Waiting until QP moves to expected next owner after "
+        Reporter.log("WORKFLOW RECOVERY: Waiting directly in QP Under Review for expected next owner after "
                 + roleLabel + " " + action + ": " + expectedOwner.roleLabel, true);
         for (int attempt = 1; attempt <= 4; attempt++) {
-            WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
-            lastDashboardRecoveryOwner = dashboardOwner;
-            Reporter.log("WORKFLOW RECOVERY: Expected owner wait attempt " + attempt
-                    + "/4 expected=" + expectedOwner.roleLabel
-                    + ", dashboardOwner=" + roleLabelOrDash(dashboardOwner), true);
-            if (sameWorkflowUser(dashboardOwner, expectedOwner)) {
+            waitForReflectionDelay();
+            if (tryOpenPendingQualityPolicyForUser(expectedOwner)) {
+                lastDashboardRecoveryOwner = expectedOwner;
+                Reporter.log("WORKFLOW RECOVERY: Expected owner wait attempt " + attempt
+                        + "/4 confirmed directly in QP Under Review for " + expectedOwner.roleLabel, true);
                 return true;
             }
-            waitForReflectionDelay();
+            Reporter.log("WORKFLOW RECOVERY: Expected owner wait attempt " + attempt
+                    + "/4 expected=" + expectedOwner.roleLabel
+                    + " not visible yet in QP Under Review.", true);
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Expected owner was not found directly. "
+                + "Checking Dashboard All Tasks only as fallback for expected owner=" + expectedOwner.roleLabel, true);
+        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
+        lastDashboardRecoveryOwner = dashboardOwner;
+        if (sameWorkflowUser(dashboardOwner, expectedOwner)) {
+            Reporter.log("WORKFLOW RECOVERY: Dashboard fallback confirmed expected owner="
+                    + expectedOwner.roleLabel, true);
+            return true;
         }
         return false;
     }
