@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_WIDGET_OWNER_BEFORE_DRAFT_2026_07_15_BT";
+    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_BAD_RECOVERY_LOGIN_2026_07_15_BU";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -1102,7 +1102,9 @@ public class EasyQQualityPolicyTest {
         for (WorkflowUser authorCandidate : workflowDraftAuthorCandidates()) {
             Reporter.log("WORKFLOW RECOVERY: Checking Draft tab under author candidate="
                     + authorCandidate.roleLabel, true);
-            loginAsConfiguredUser(authorCandidate.username, authorCandidate.password);
+            if (!tryLoginAsRecoveryCandidate(authorCandidate, "Draft author search")) {
+                continue;
+            }
             activeAuthorUser = authorCandidate;
             activeReviewerUsers.clear();
             activeReviewer1User = null;
@@ -1146,7 +1148,9 @@ public class EasyQQualityPolicyTest {
         }
         Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
                 + " account for pending Under Review QP.", true);
-        loginAsConfiguredUser(workflowUser.username, workflowUser.password);
+        if (!tryLoginAsRecoveryCandidate(workflowUser, "pending Under Review stage search")) {
+            return false;
+        }
         try {
             navigateToQualityPolicy();
         } catch (AssertionError | RuntimeException exception) {
@@ -1171,7 +1175,9 @@ public class EasyQQualityPolicyTest {
         }
         Reporter.log("WORKFLOW RECOVERY: Checking " + workflowUser.roleLabel
                 + " account for pending Under Review QP.", true);
-        loginAsConfiguredUser(workflowUser.username, workflowUser.password);
+        if (!tryLoginAsRecoveryCandidate(workflowUser, "pending Under Review user search")) {
+            return false;
+        }
         try {
             navigateToQualityPolicy();
         } catch (AssertionError | RuntimeException exception) {
@@ -1194,6 +1200,21 @@ public class EasyQQualityPolicyTest {
         Reporter.log("WORKFLOW RECOVERY: Found pending QP under " + workflowUser.roleLabel
                 + ". Document Information resolved stage=" + workflowResumeStage, true);
         return true;
+    }
+
+    private boolean tryLoginAsRecoveryCandidate(WorkflowUser workflowUser, String searchContext) {
+        if (workflowUser == null) {
+            return false;
+        }
+        try {
+            loginAsConfiguredUser(workflowUser.username, workflowUser.password);
+            return true;
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("WORKFLOW RECOVERY: Skipping " + workflowUser.roleLabel
+                    + " during " + searchContext + " because login did not reach app shell. Reason: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            return false;
+        }
     }
 
     private WorkflowUser workflowUserForStage(String stage) {
