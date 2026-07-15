@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DRAFT_UNDER_REVIEW_TAB_REFLECT_2026_07_15_CA";
+    private static final String QP_FLOW_CODE_VERSION = "QP_VERSION_HISTORY_APPROVED_RETRY_2026_07_15_CB";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -2659,16 +2659,30 @@ public class EasyQQualityPolicyTest {
 
     private boolean verifyApprovedVersionHistoryPopupDownloadMatches() {
         Reporter.log("VERSION HISTORY: Opening Approved QP version badge and validating popup download.", true);
-        openQualityPolicyListFromAnyDetailView();
-        waitForQualityPolicyTabs();
-        boolean approvedTabClicked = clickQualityPolicySectionTab("Approved");
-        waitForQualityPolicyTabContentToFinishLoading();
-        Reporter.log("VERSION HISTORY: Approved tab clicked=" + approvedTabClicked
-                + ". Visible text: " + shortBodyText(), true);
+        boolean badgeClicked = false;
+        int maxAttempts = Math.max(3, config.getInt("explicitWait") / 5);
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            openQualityPolicyListFromAnyDetailView();
+            if (!isQualityPolicyListOpen()) {
+                openQualityPolicyListRouteDirectly();
+            }
+            waitForQualityPolicyTabs();
+            boolean approvedTabClicked = clickQualityPolicySectionTab("Approved");
+            waitForQualityPolicyTabContentToFinishLoading();
+            Reporter.log("VERSION HISTORY: Approved tab click attempt " + attempt + "/" + maxAttempts
+                    + " clicked=" + approvedTabClicked + ". Visible text: " + shortBodyText(), true);
 
-        if (!clickApprovedQualityPolicyVersionBadge()) {
-            Reporter.log("VERSION HISTORY FAILED: Approved QP version badge like V21 was not clickable. Visible text: "
-                    + shortBodyText(), true);
+            badgeClicked = clickApprovedQualityPolicyVersionBadge();
+            if (badgeClicked) {
+                break;
+            }
+            Reporter.log("VERSION HISTORY: Approved QP version badge not visible yet; retrying from QP list.", true);
+            waitForReflectionDelay();
+        }
+
+        if (!badgeClicked) {
+            Reporter.log("VERSION HISTORY FAILED: Approved QP version badge like V21 was not clickable after retries. "
+                    + "Visible text: " + shortBodyText(), true);
             return false;
         }
 
