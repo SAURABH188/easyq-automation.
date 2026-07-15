@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_CARD_REFLECTION_WAIT_2026_07_15_BZ";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DRAFT_UNDER_REVIEW_TAB_REFLECT_2026_07_15_CA";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -5409,11 +5409,24 @@ public class EasyQQualityPolicyTest {
     private boolean openUnderReviewQualityPolicyTask() {
         navigateToQualityPolicy();
         clickQualityPolicySectionTab("Under Review");
-        waitForSmallDelay();
+        waitForQualityPolicyTabContentToFinishLoading();
 
         if (hasNoPolicyRecordsOnCurrentTab()) {
-            Reporter.log("WORKFLOW EXACT: Under Review tab has no QP task records.", true);
-            return false;
+            Reporter.log("WORKFLOW EXACT: Under Review tab has no QP task records. "
+                    + "Switching Draft -> Under Review to refresh assigned task reflection.", true);
+            for (int attempt = 1; attempt <= 3 && hasNoPolicyRecordsOnCurrentTab(); attempt++) {
+                Reporter.log("WORKFLOW EXACT: Under Review reflection tab-switch attempt " + attempt + ".", true);
+                clickQualityPolicySectionTab("Draft");
+                waitForQualityPolicyTabContentToFinishLoading();
+                waitForReflectionDelay();
+                clickQualityPolicySectionTab("Under Review");
+                waitForQualityPolicyTabContentToFinishLoading();
+                waitForSmallDelay();
+            }
+            if (hasNoPolicyRecordsOnCurrentTab()) {
+                Reporter.log("WORKFLOW EXACT: Under Review tab still has no QP task records after Draft/Under Review refresh.", true);
+                return false;
+            }
         }
 
         if (latestPolicyTitle != null && clickVisibleText(latestPolicyTitle)) {
