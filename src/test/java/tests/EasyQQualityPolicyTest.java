@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_UNDER_REVIEW_DIRECT_OWNER_2026_07_15_BR";
+    private static final String QP_FLOW_CODE_VERSION = "QP_FETCH_DOC_INFO_BEFORE_ACTION_2026_07_15_BS";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -4717,6 +4717,21 @@ public class EasyQQualityPolicyTest {
                     + roleLabel + ". Dashboard owner=" + roleLabelOrDash(lastDashboardRecoveryOwner), true);
             return false;
         }
+
+        WorkflowUser currentActor = workflowUserByUsernameOrLabel(username, roleLabel);
+        String resolvedStage = resolveAndApplyWorkflowParticipantsFromDocumentInformation(currentActor);
+        if (resolvedStage == null) {
+            Reporter.log("WORKFLOW RECOVERY: Under Review QP opened for " + roleLabel
+                    + ", but Document Information did not identify this user as the active reviewer/approver. "
+                    + "Stopping before action. Visible text: " + shortBodyText(), true);
+            return false;
+        }
+        workflowResumeStage = resolvedStage;
+        Reporter.log("WORKFLOW EXACT: Before " + roleLabel + " " + action
+                + ", fetched QP Document Information and resolved current stage=" + workflowResumeStage
+                + ", author=" + roleLabelOrDash(activeAuthorUser)
+                + ", reviewers=" + reviewerListForLog(activeReviewerUsers)
+                + ", approver=" + roleLabelOrDash(activeApproverUser), true);
 
         openEvaluationTab();
         clickButtonByText("Start Editing", "Edit");
