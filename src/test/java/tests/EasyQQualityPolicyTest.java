@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_FETCH_DOC_INFO_BEFORE_ACTION_2026_07_15_BS";
+    private static final String QP_FLOW_CODE_VERSION = "QP_WIDGET_OWNER_BEFORE_DRAFT_2026_07_15_BT";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -943,10 +943,18 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean ensureUnderReviewPolicyFromApprovedOrExistingDraft() {
-        Reporter.log("WORKFLOW: Preparing QP review cycle. Checking Under Review and Draft directly before Dashboard.", true);
+        Reporter.log("WORKFLOW: Preparing QP review cycle. Checking Under Review, Dashboard widget owner, then Draft.", true);
 
         if (tryOpenPendingQualityPolicyAcrossKnownUsers()) {
             return true;
+        }
+
+        Boolean dashboardResumeResult = tryResumeQualityPolicyFromDashboardAllTasksFirst();
+        if (Boolean.TRUE.equals(dashboardResumeResult)) {
+            return true;
+        }
+        if (Boolean.FALSE.equals(dashboardResumeResult)) {
+            return false;
         }
 
         if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
@@ -1066,21 +1074,21 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean recoverExistingQualityPolicyAcrossWorkflowUsers() {
-        Reporter.log("WORKFLOW RECOVERY: Searching existing QP from Draft/Under Review directly before Dashboard fallback.", true);
+        Reporter.log("WORKFLOW RECOVERY: Searching existing QP from Under Review, Dashboard widget, then Draft.", true);
 
         if (tryOpenPendingQualityPolicyAcrossKnownUsers()) {
             return true;
         }
 
-        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
+        Boolean dashboardResumeResult = tryResumeQualityPolicyFromDashboardAllTasksFirst();
+        if (Boolean.TRUE.equals(dashboardResumeResult)) {
             return true;
         }
+        if (Boolean.FALSE.equals(dashboardResumeResult)) {
+            return false;
+        }
 
-        Reporter.log("WORKFLOW RECOVERY: Direct Draft/Under Review search failed. Using Dashboard All Tasks only as fallback.", true);
-        WorkflowUser dashboardOwner = detectPendingQualityPolicyOwnerFromDashboardAllTasks();
-        if (dashboardOwner != null && tryOpenPendingQualityPolicyForUser(dashboardOwner)) {
-            Reporter.log("WORKFLOW RECOVERY: Resuming QP from Dashboard fallback owner="
-                    + dashboardOwner.roleLabel, true);
+        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
             return true;
         }
 
