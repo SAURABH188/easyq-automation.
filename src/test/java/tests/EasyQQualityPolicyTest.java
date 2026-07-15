@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_MORE_POPUP_2026_07_15_BV";
+    private static final String QP_FLOW_CODE_VERSION = "QP_VARUN_DASHBOARD_FIRST_2026_07_15_BW";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -943,11 +943,7 @@ public class EasyQQualityPolicyTest {
     }
 
     private boolean ensureUnderReviewPolicyFromApprovedOrExistingDraft() {
-        Reporter.log("WORKFLOW: Preparing QP review cycle. Checking Under Review, Dashboard widget owner, then Draft.", true);
-
-        if (tryOpenPendingQualityPolicyAcrossKnownUsers()) {
-            return true;
-        }
+        Reporter.log("WORKFLOW: Preparing QP review cycle. First checking Varun Dashboard All Tasks QP widget.", true);
 
         Boolean dashboardResumeResult = tryResumeQualityPolicyFromDashboardAllTasksFirst();
         if (Boolean.TRUE.equals(dashboardResumeResult)) {
@@ -957,17 +953,18 @@ public class EasyQQualityPolicyTest {
             return false;
         }
 
-        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
-            return true;
-        }
-
-        Reporter.log("WORKFLOW: No existing Draft/Under Review QP found directly. Trying to create a new QP draft from Varun account.", true);
+        Reporter.log("WORKFLOW: Varun Dashboard QP widget has no pending task. Trying Approved -> Move to Draft from Varun account.", true);
         if (!qualityPolicyDraftCreatedInCurrentTest && createDraftFromApprovedQualityPolicy()) {
             boolean submitted = submitCurrentDraftForReviewWithConfiguredUsers();
             if (submitted) {
                 workflowResumeStage = "REVIEWER1";
             }
             return submitted;
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: Approved -> Move to Draft did not prepare QP. Checking existing Draft under Varun/doc controllers.", true);
+        if (tryOpenDraftAcrossAuthorUsersAndSendForReview()) {
+            return true;
         }
 
         if (recoverExistingQualityPolicyAcrossWorkflowUsers()) {
@@ -1057,6 +1054,11 @@ public class EasyQQualityPolicyTest {
             Reporter.log("WORKFLOW EXACT: Move to Draft was clicked, but Draft state was not confirmed. "
                     + "Searching existing Draft/Under Review QP across workflow users. Visible text: "
                     + shortBodyText(), true);
+            if (hasExistingQualityPolicyDraftMessage()) {
+                Reporter.log("WORKFLOW RECOVERY: EasyQ says Quality Policy draft is already created. "
+                        + "Searching Varun/doc-controller Draft tabs.", true);
+                return tryOpenDraftAcrossAuthorUsersAndSendForReview();
+            }
             return recoverExistingQualityPolicyAcrossWorkflowUsers();
         }
         qualityPolicyDraftCreatedInCurrentTest = true;
@@ -5110,6 +5112,17 @@ public class EasyQQualityPolicyTest {
             return true;
         }
         return false;
+    }
+
+    private boolean hasExistingQualityPolicyDraftMessage() {
+        String bodyText = getBodyText();
+        return containsAnyIgnoreCase(bodyText,
+                "draft is already",
+                "already in draft",
+                "already created",
+                "draft already",
+                "Quality Policy draft is already",
+                "Draft is already created");
     }
 
     private boolean hasQualityPolicyProcessingErrorToast() {
