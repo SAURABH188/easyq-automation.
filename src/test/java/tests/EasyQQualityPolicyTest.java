@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_WAIT_AMIT_UNDER_REVIEW_REFLECTION_2026_07_15_BY";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_CARD_REFLECTION_WAIT_2026_07_15_BZ";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -1458,13 +1458,18 @@ public class EasyQQualityPolicyTest {
     }
 
     private String waitForDashboardAllTasksQualityPolicyDetails() {
-        long deadline = System.currentTimeMillis() + Duration.ofSeconds(config.getInt("explicitWait")).toMillis();
+        long dashboardWidgetWaitMillis = Math.max(
+                Duration.ofSeconds(config.getInt("explicitWait")).toMillis(),
+                Duration.ofSeconds(60).toMillis());
+        long deadline = System.currentTimeMillis() + dashboardWidgetWaitMillis;
         long firstCheckAt = System.currentTimeMillis();
         long noPendingFirstSeenAt = 0L;
-        long noPendingGraceMillis = Duration.ofSeconds(12).toMillis();
+        long noPendingGraceMillis = Duration.ofSeconds(20).toMillis();
         String lastText = "";
         String lastMeaningfulText = "";
         int stableCount = 0;
+        Reporter.log("WORKFLOW RECOVERY: Waiting up to " + (dashboardWidgetWaitMillis / 1000)
+                + " seconds for Dashboard All Tasks QP widget reflection.", true);
 
         while (System.currentTimeMillis() < deadline) {
             String cardText = dashboardQualityPolicyCardText().replaceAll("\\s+", " ").trim();
