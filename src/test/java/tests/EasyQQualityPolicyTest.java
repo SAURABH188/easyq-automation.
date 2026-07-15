@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_SKIP_BAD_RECOVERY_LOGIN_2026_07_15_BU";
+    private static final String QP_FLOW_CODE_VERSION = "QP_DASHBOARD_MORE_POPUP_2026_07_15_BV";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -1498,12 +1498,21 @@ public class EasyQQualityPolicyTest {
     }
 
     private WorkflowUser currentOwnerFromQualityPolicyWidgetText(String cardText) {
+        WorkflowUser popupOwner = currentOwnerFromQualityPolicyMorePopup();
+        if (popupOwner != null) {
+            return popupOwner;
+        }
+
         WorkflowUser iconOwner = currentOwnerFromQualityPolicyWidgetIcons();
         if (iconOwner != null) {
             return iconOwner;
         }
 
-        String normalizedText = String.valueOf(cardText).replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+        String normalizedText = String.valueOf(cardText)
+                .replaceAll("\\+\\s*\\d+\\s+more", " ")
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toLowerCase(Locale.ROOT);
         if (normalizedText.isBlank() || normalizedText.contains("no pending items")) {
             return null;
         }
@@ -1514,7 +1523,7 @@ public class EasyQQualityPolicyTest {
             currentOwner = currentReviewerMatcher.group(1).trim();
         }
         if (currentOwner.isBlank()) {
-            Matcher approverMatcher = Pattern.compile("approver\\s*:?\\s+([a-z ]+?)(?:\\s+due|\\s+view|\\s+\\d|$)")
+            Matcher approverMatcher = Pattern.compile("approver\\s*:?\\s+([a-z ]+?)(?:\\s+reviewer|\\s+due|\\s+view|\\s+\\d|$)")
                     .matcher(normalizedText);
             if (approverMatcher.find()) {
                 currentOwner = approverMatcher.group(1).trim();
@@ -1525,6 +1534,270 @@ public class EasyQQualityPolicyTest {
             matchedUser = knownWorkflowUserByName(normalizedText);
         }
         return matchedUser;
+    }
+
+    private WorkflowUser currentOwnerFromQualityPolicyMorePopup() {
+        String popupRows = dashboardQualityPolicyMorePopupRowsText();
+        if (popupRows.isBlank()) {
+            return null;
+        }
+        Reporter.log("WORKFLOW RECOVERY: Dashboard QP widget more-popup rows="
+                + popupRows.replaceAll("\\s+", " ").trim(), true);
+
+        List<WorkflowUser> reviewers = new ArrayList<>();
+        Map<Integer, WorkflowUser> numberedReviewers = new HashMap<>();
+        WorkflowUser approver = null;
+        WorkflowUser pendingOwner = null;
+
+        for (String row : popupRows.split("\\R")) {
+            String trimmedRow = row.replaceAll("\\s+", " ").trim();
+            if (trimmedRow.isBlank()) {
+                continue;
+            }
+            String normalizedRow = normalizeComparableText(trimmedRow);
+            WorkflowUser rowUser = knownWorkflowUserByName(normalizedRow);
+            if (rowUser == null) {
+                continue;
+            }
+
+            if (normalizedRow.contains("reviewer")) {
+                int reviewerOrder = reviewerOrderFromText(normalizedRow);
+                if (reviewerOrder >= 0) {
+                    numberedReviewers.putIfAbsent(reviewerOrder, rowUser);
+                } else if (reviewers.stream().noneMatch(existing -> sameWorkflowUser(existing, rowUser))) {
+                    reviewers.add(rowUser);
+                }
+            }
+            if (normalizedRow.contains("approver")) {
+                approver = rowUser;
+            }
+            if (trimmedRow.toLowerCase(Locale.ROOT).startsWith("pending::")) {
+                pendingOwner = rowUser;
+            }
+        }
+
+        String normalizedPopupRows = normalizeComparableText(popupRows);
+        if (numberedReviewers.isEmpty() && reviewers.isEmpty()) {
+            reviewers.addAll(findKnownReviewersInDocumentInformation(normalizedPopupRows));
+        }
+        if (approver == null) {
+            approver = findKnownUserInRoleSection(normalizedPopupRows, "approver");
+        }
+
+        if (!numberedReviewers.isEmpty()) {
+            reviewers.clear();
+            for (int reviewerIndex = 0; reviewerIndex < 20; reviewerIndex++) {
+                WorkflowUser reviewer = numberedReviewers.get(reviewerIndex);
+                if (reviewer != null && reviewers.stream().noneMatch(existing -> sameWorkflowUser(existing, reviewer))) {
+                    reviewers.add(reviewer);
+                }
+            }
+        }
+
+        if (!reviewers.isEmpty() || approver != null) {
+            activeReviewerUsers.clear();
+            activeReviewerUsers.addAll(reviewers);
+            activeReviewer1User = activeReviewerUsers.isEmpty() ? null : activeReviewerUsers.get(0);
+            activeReviewer2User = activeReviewerUsers.size() > 1 ? activeReviewerUsers.get(1) : null;
+            activeApproverUser = approver;
+            workflowParticipantsResolvedFromDocumentInformation = true;
+            Reporter.log("WORKFLOW RECOVERY: Dashboard popup resolved reviewers="
+                    + reviewerListForLog(activeReviewerUsers)
+                    + ", approver=" + roleLabelOrDash(activeApproverUser)
+                    + ", pendingOwner=" + roleLabelOrDash(pendingOwner), true);
+        }
+
+        return pendingOwner;
+    }
+
+    private int reviewerOrderFromText(String text) {
+        Matcher matcher = Pattern.compile("reviewer\\s*(\\d+)").matcher(String.valueOf(text));
+        if (!matcher.find()) {
+            return -1;
+        }
+        return Math.max(0, Integer.parseInt(matcher.group(1)) - 1);
+    }
+
+    private String dashboardQualityPolicyMorePopupRowsText() {
+        try {
+            Object clickResult = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden'
+                                && style.display !== 'none'
+                                && Number(style.opacity || 1) > 0;
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim();
+                            const cards = Array.from(document.querySelectorAll('section,article,div,li'))
+                              .filter(visible)
+                              .filter(el => textOf(el).toLowerCase().includes('quality policy'))
+                              .map(el => {
+                                const rect = el.getBoundingClientRect();
+                                const text = textOf(el);
+                                let score = 0;
+                                if (/^quality policy/i.test(text)) score += 100;
+                                if (/reviewer|approver|reviewed by/i.test(text)) score += 100;
+                                if (/\\+\\s*\\d+\\s*more/i.test(text)) score += 130;
+                                if (/view/i.test(text)) score += 10;
+                                score -= Math.min(120, text.length / 4);
+                                score -= Math.min(80, (rect.width * rect.height) / 6000);
+                                return {el, score};
+                              })
+                              .sort((a, b) => b.score - a.score);
+                            if (!cards.length) return 'NO_QP_CARD';
+                            const root = cards[0].el;
+                            const more = Array.from(root.querySelectorAll('button,a,[role=button],span,div'))
+                              .filter(visible)
+                              .find(el => /\\+\\s*\\d+\\s*more/i.test(textOf(el)));
+                            if (!more) return 'NO_MORE_LINK';
+                            const target = more.closest('button,a,[role=button]') || more;
+                            target.scrollIntoView({block: 'center', inline: 'center'});
+                            target.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+                            target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                            target.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                            target.click();
+                            return 'CLICKED_MORE_LINK:' + textOf(more);
+                            """);
+            if (!String.valueOf(clickResult).startsWith("CLICKED_MORE_LINK")) {
+                return "";
+            }
+            waitForSmallDelay();
+
+            Object rows = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden'
+                                && style.display !== 'none'
+                                && Number(style.opacity || 1) > 0;
+                            };
+                            const textOf = el => String([
+                              el && el.innerText,
+                              el && el.textContent,
+                              el && el.getAttribute && el.getAttribute('aria-label'),
+                              el && el.getAttribute && el.getAttribute('title'),
+                              el && el.getAttribute && el.getAttribute('class')
+                            ].join(' ')).replace(/\\s+/g, ' ').trim();
+                            const colorState = value => {
+                              const text = String(value || '').toLowerCase();
+                              const numbers = text.match(/\\d+(?:\\.\\d+)?/g);
+                              if (!numbers || numbers.length < 3) return '';
+                              const [r, g, b] = numbers.slice(0, 3).map(Number);
+                              if (g > 110 && r < 120 && b < 130) return 'completed';
+                              if (r > 170 && g > 90 && g < 190 && b < 120) return 'pending';
+                              if (r > 180 && g > 120 && b < 80) return 'pending';
+                              return '';
+                            };
+                            const nodeState = node => {
+                              const style = getComputedStyle(node);
+                              const joined = [
+                                textOf(node),
+                                node.getAttribute && node.getAttribute('class'),
+                                node.getAttribute && node.getAttribute('stroke'),
+                                node.getAttribute && node.getAttribute('fill'),
+                                style.color,
+                                style.stroke,
+                                style.fill
+                              ].join(' ').toLowerCase();
+                              let pending = 0;
+                              let completed = 0;
+                              if (/clock|schedule|access[_ -]?time|pending|watch|due|timer/.test(joined)) pending += 3;
+                              if (/check|done|complete|completed|approved|verified/.test(joined)) completed += 3;
+                              for (const color of [style.color, style.stroke, style.fill, node.getAttribute && node.getAttribute('stroke'), node.getAttribute && node.getAttribute('fill')]) {
+                                const state = colorState(color);
+                                if (state === 'pending') pending += 2;
+                                if (state === 'completed') completed += 2;
+                              }
+                              if (pending > completed && pending > 0) return 'pending';
+                              if (completed > 0) return 'completed';
+                              return 'unknown';
+                            };
+                            const rowState = (row, root) => {
+                              const rowRect = row.getBoundingClientRect();
+                              const icons = Array.from(root.querySelectorAll('svg,i,mat-icon,[class*=icon],[class*=Icon],path,circle'))
+                                .filter(visible)
+                                .filter(icon => {
+                                  const rect = icon.getBoundingClientRect();
+                                  return row.contains(icon)
+                                    || Math.abs((rect.top + rect.bottom) / 2 - (rowRect.top + rowRect.bottom) / 2) <= 18;
+                                });
+                              let pending = 0;
+                              let completed = 0;
+                              for (const icon of icons) {
+                                const state = nodeState(icon);
+                                if (state === 'pending') pending++;
+                                if (state === 'completed') completed++;
+                              }
+                              if (pending > completed && pending > 0) return 'pending';
+                              if (completed > 0) return 'completed';
+                              return 'unknown';
+                            };
+                            const popupCandidates = Array.from(document.querySelectorAll('[role=dialog],.modal,.popover,.tooltip,.cdk-overlay-pane,.mat-menu-panel,.ng-star-inserted,section,article,div'))
+                              .filter(visible)
+                              .map(el => {
+                                const rect = el.getBoundingClientRect();
+                                const text = textOf(el);
+                                const lower = text.toLowerCase();
+                                let score = 0;
+                                if (/reviewer\\s*1/.test(lower)) score += 130;
+                                if (/reviewer\\s*2/.test(lower)) score += 90;
+                                if (/approver/.test(lower)) score += 90;
+                                if (!/quality policy/.test(lower)) score += 40;
+                                if (rect.width <= 520) score += 60;
+                                if (rect.height <= 320) score += 50;
+                                if (text.length <= 450) score += 50;
+                                score -= Math.min(120, text.length / 5);
+                                return {el, text, score};
+                              })
+                              .filter(item => /reviewer|approver/i.test(item.text))
+                              .sort((a, b) => b.score - a.score);
+                            const root = popupCandidates.length ? popupCandidates[0].el : null;
+                            if (!root) return '';
+                            const rawRows = Array.from(root.querySelectorAll('div,li,p,tr,section,article'))
+                              .filter(visible)
+                              .map(el => ({el, text: textOf(el)}))
+                              .filter(item => /reviewer|approver/i.test(item.text))
+                              .filter(item => item.text.length >= 8 && item.text.length <= 180)
+                              .sort((a, b) => a.text.length - b.text.length);
+                            const selected = [];
+                            const seen = new Set();
+                            for (const item of rawRows) {
+                              const text = item.text.replace(/\\s+/g, ' ').trim();
+                              const key = text.toLowerCase();
+                              if (seen.has(key)) continue;
+                              if (selected.some(existing => existing.text.toLowerCase().includes(key))) continue;
+                              seen.add(key);
+                              selected.push({text, state: rowState(item.el, root)});
+                            }
+                            if (!selected.length) {
+                              const text = textOf(root);
+                              return text ? 'UNKNOWN::' + text : '';
+                            }
+                            return selected
+                              .map(item => item.state.toUpperCase() + '::' + item.text)
+                              .join('\\n');
+                            """);
+            try {
+                new Actions(driver).sendKeys(Keys.ESCAPE).perform();
+            } catch (RuntimeException ignored) {
+                // The popup may already be closed.
+            }
+            return String.valueOf(rows);
+        } catch (RuntimeException exception) {
+            return "";
+        }
     }
 
     private WorkflowUser currentOwnerFromQualityPolicyWidgetIcons() {
