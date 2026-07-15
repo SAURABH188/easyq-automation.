@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class EasyQQualityPolicyTest {
-    private static final String QP_FLOW_CODE_VERSION = "QP_VERSION_HISTORY_APPROVED_RETRY_2026_07_15_CB";
+    private static final String QP_FLOW_CODE_VERSION = "QP_MOVE_TO_DRAFT_CANCEL_FAST_2026_07_15_CC";
     private static final long DEFAULT_ACTION_WAIT_MILLIS = 800L;
     private static final long POST_ACTION_DATA_LOAD_WAIT_MILLIS = 3000L;
     private static final Duration REQUIRED_DOWNLOAD_TIMEOUT = Duration.ofSeconds(45);
@@ -3195,13 +3195,17 @@ public class EasyQQualityPolicyTest {
     private boolean confirmMoveToDraftPrompt() {
         boolean confirmed = clickYesMoveToDraftConfirmation();
         boolean draftStateAfterYes = false;
+        boolean cancelClosed = false;
         if (confirmed) {
+            cancelClosed = clickCancelMoveToDraftConfirmationIfStillVisible();
             waitForActionCompletionAndDataLoad("Move to Draft confirmation",
                     "Draft", "Save", "Send for Review", "What is the change");
             draftStateAfterYes = waitForDraftEditor()
                     || pageContainsAny("Draft", "Save", "Send for Review", "What is the change");
+            if (!cancelClosed) {
+                cancelClosed = clickCancelMoveToDraftConfirmationIfStillVisible();
+            }
         }
-        boolean cancelClosed = confirmed && clickCancelMoveToDraftConfirmationIfStillVisible();
         Reporter.log("WORKFLOW EXACT: Move to Draft confirmation clicked=" + confirmed
                 + ", draftStateAfterYes=" + draftStateAfterYes
                 + ", cancelClosedPopup=" + cancelClosed, true);
