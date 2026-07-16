@@ -21,12 +21,12 @@ public class EasyQQualityObjectiveTest extends EasyQModuleWorkflowBase {
 
     @Override
     protected String[] moduleUrlFragments() {
-        return new String[]{"quality-objective", "qualityobjective", "quality_objective", "objective"};
+        return new String[]{"quality_objective", "quality-objective", "qualityobjective", "objective"};
     }
 
     @Override
     protected String moduleMenuRegex() {
-        return "quality\\s*objective|quality-objective|qualityobjective";
+        return "quality\\s*objective|quality-objective|quality_objective|qualityobjective";
     }
 
     @Override

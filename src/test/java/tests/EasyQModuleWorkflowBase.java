@@ -15,6 +15,7 @@ import org.testng.Reporter;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import utils.ConfigReader;
+import utils.HamburgerNavigationHelper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +39,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public abstract class EasyQModuleWorkflowBase {
-    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_RA_QP_LOGIC_PORT_2026_07_15_A";
+    private static final String MODULE_WORKFLOW_CODE_VERSION = "MODULE_QO_SIMPLE_DRAFT_VIEW_FLOW_2026_07_15_H";
 
     private static final class DownloadFileState {
         private final long size;
@@ -77,6 +78,10 @@ public abstract class EasyQModuleWorkflowBase {
     private String latestRecordTitle;
     private String setupFailureMessage;
     private String currentAuthorPassword;
+    private WorkflowActor activeAuthorActor;
+    private final List<WorkflowActor> activeReviewerActors = new ArrayList<>();
+    private WorkflowActor activeApproverActor;
+    private String lastResolvedWorkflowStage;
     private int dynamicTextSequence;
     private Path downloadDirectory;
 
@@ -85,7 +90,7 @@ public abstract class EasyQModuleWorkflowBase {
 
     protected final By emailField = By.xpath("//input[@type='email' or contains(@formcontrolname,'email')]");
     protected final By passwordField = By.xpath("//input[@type='password' or contains(@formcontrolname,'password')]");
-    protected final By loginButton = By.xpath("//button[contains(normalize-space(.),'Log In')]");
+    protected final By loginButton = By.xpath("//button[@type='submit' or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]");
     protected final By dashboardText = By.xpath("//*[contains(normalize-space(.),'Dashboard')]");
     protected final By initiateButton = By.xpath("//button[contains(normalize-space(.),'Initiate') or contains(normalize-space(.),'Create') or contains(normalize-space(.),'Add') or contains(normalize-space(.),'New')]");
     protected final By addRowButton = By.xpath("//button[contains(normalize-space(.),'Add Row') or contains(normalize-space(.),'Add Objective') or normalize-space(.)='Add' or contains(@title,'Add')]");
@@ -101,8 +106,6 @@ public abstract class EasyQModuleWorkflowBase {
     protected final By editableContent = By.xpath("//*[@contenteditable='true' or contains(@class,'ql-editor') or contains(@class,'editor')]");
     protected final By workflowModalOrPanel = By.xpath("//*[contains(@class,'modal') or contains(@class,'dialog') or contains(@class,'overlay') or contains(@class,'drawer') or contains(@class,'panel')]");
     protected final By visibleInputOrTextarea = By.xpath("//input[not(@type='hidden') and not(@type='file') and not(@readonly) and not(@disabled)] | //textarea[not(@readonly) and not(@disabled)]");
-    protected final By hamburgerMenuTrigger = By.xpath("//*[self::button or self::a or @role='button'][contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'menu') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sidebar') or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'toggle') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'menu') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sidebar') or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'toggle') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'hamburger') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'menu') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sidebar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'toggle') or .//*[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'hamburger') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'menu') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sidebar') or contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'toggle')]]");
-
     protected abstract String moduleLabel();
 
     protected abstract String moduleConfigPrefix();
@@ -182,7 +185,10 @@ public abstract class EasyQModuleWorkflowBase {
         navLog("WORKFLOW: Creating " + moduleLabel() + " draft from Varun account.");
         currentAuthorPassword = getPassword();
         navigateToModule();
-        if (!openDraftEditor()) {
+        if (openDraftCardFromDraftTabIfPresent()) {
+            Reporter.log("WORKFLOW: Existing " + moduleLabel()
+                    + " Draft card opened by View. Continuing with draft update.", true);
+        } else if (!openDraftEditor()) {
             return false;
         }
 
@@ -252,6 +258,10 @@ public abstract class EasyQModuleWorkflowBase {
         waitForSmallDelay();
         confirmIfPrompt();
         waitForReflectionDelay();
+
+        if (reviewersAssigned && approverAssigned && submitted) {
+            useConfiguredWorkflowActorsForNewSubmission();
+        }
 
         return reviewersAssigned && approverAssigned && submitted
                 && (pageContainsAny("Under Review", "Review", "Pending", "Submitted", latestRecordTitle())
@@ -330,11 +340,16 @@ public abstract class EasyQModuleWorkflowBase {
             return completeApprovalOnlyFromCurrentModuleState("Initial review setup failed or module already moved");
         }
 
+        refreshActiveWorkflowParticipantsFromOpenDocumentInformation(null);
+        WorkflowActor reviewer1Actor = effectiveReviewerActor(0);
+        WorkflowActor reviewer2Actor = effectiveReviewerActor(1);
+        WorkflowActor approverActor = effectiveApproverActor();
+
         if (rejectFirst) {
             boolean rejected = performWorkflowAction(
-                    workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
-                    reviewer1Password(),
-                    "Reviewer 1",
+                    reviewer1Actor.username,
+                    reviewer1Actor.password,
+                    reviewer1Actor.roleLabel,
                     "Reject");
             if (!rejected) {
                 return completeApprovalOnlyFromCurrentModuleState(
@@ -349,9 +364,9 @@ public abstract class EasyQModuleWorkflowBase {
         }
 
         boolean reviewer1Done = performWorkflowAction(
-                workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
-                reviewer1Password(),
-                "Reviewer 1",
+                reviewer1Actor.username,
+                reviewer1Actor.password,
+                reviewer1Actor.roleLabel,
                 "Approve");
         if (!reviewer1Done) {
             return completeApprovalOnlyFromCurrentModuleState(
@@ -360,9 +375,9 @@ public abstract class EasyQModuleWorkflowBase {
 
         if (rejectFirst) {
             boolean reviewer2Rejected = performWorkflowAction(
-                    workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
-                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                    "Reviewer 2",
+                    reviewer2Actor.username,
+                    reviewer2Actor.password,
+                    reviewer2Actor.roleLabel,
                     "Reject");
             if (!reviewer2Rejected) {
                 return completeApprovalOnlyFromCurrentModuleState(
@@ -370,9 +385,9 @@ public abstract class EasyQModuleWorkflowBase {
             }
 
             reviewer1Done = performWorkflowAction(
-                    workflowUserName("REVIEWER1_USERNAME", configValue("EASYQ_ADMIN_USERNAME", validEmail)),
-                    reviewer1Password(),
-                    "Reviewer 1 after Reviewer 2 reject",
+                    reviewer1Actor.username,
+                    reviewer1Actor.password,
+                    reviewer1Actor.roleLabel + " after Reviewer 2 reject",
                     "Approve");
             if (!reviewer1Done) {
                 return completeApprovalOnlyFromCurrentModuleState(
@@ -381,9 +396,9 @@ public abstract class EasyQModuleWorkflowBase {
         }
 
         boolean reviewer2Done = performWorkflowAction(
-                workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
-                requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                "Reviewer 2",
+                reviewer2Actor.username,
+                reviewer2Actor.password,
+                reviewer2Actor.roleLabel,
                 "Approve");
         if (!reviewer2Done) {
             return completeApprovalOnlyFromCurrentModuleState(
@@ -392,9 +407,9 @@ public abstract class EasyQModuleWorkflowBase {
 
         if (rejectFirst) {
             boolean approverRejected = performWorkflowAction(
-                    workflowUserName("APPROVER_USERNAME", configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "")),
-                    requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
-                    "Approver",
+                    approverActor.username,
+                    approverActor.password,
+                    approverActor.roleLabel,
                     "Reject");
             if (!approverRejected) {
                 return completeApprovalOnlyFromCurrentModuleState(
@@ -402,9 +417,9 @@ public abstract class EasyQModuleWorkflowBase {
             }
 
             reviewer2Done = performWorkflowAction(
-                    workflowUserName("REVIEWER2_USERNAME", configValue("EASYQ_DOC_CONTROLLER_USERNAME", "")),
-                    requiredSecret("EASYQ_DOC_CONTROLLER_PASSWORD"),
-                    "Reviewer 2 after Approver reject",
+                    reviewer2Actor.username,
+                    reviewer2Actor.password,
+                    reviewer2Actor.roleLabel + " after Approver reject",
                     "Approve");
             if (!reviewer2Done) {
                 return completeApprovalOnlyFromCurrentModuleState(
@@ -413,9 +428,9 @@ public abstract class EasyQModuleWorkflowBase {
         }
 
         boolean approverDone = performWorkflowAction(
-                workflowUserName("APPROVER_USERNAME", configValue("EASYQ_ASSIGNEE_AMIT_USERNAME", "")),
-                requiredSecret("EASYQ_ASSIGNEE_AMIT_PASSWORD"),
-                rejectFirst ? "Approver final approval" : "Approver",
+                approverActor.username,
+                approverActor.password,
+                rejectFirst ? approverActor.roleLabel + " final approval" : approverActor.roleLabel,
                 "Approve");
         if (!approverDone) {
             return completeApprovalOnlyFromCurrentModuleState(
@@ -447,7 +462,7 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private boolean approveRemainingWorkflowFromStage(String currentStage) {
-        List<WorkflowActor> actors = configuredWorkflowActors();
+        List<WorkflowActor> actors = effectiveWorkflowActors();
         int startIndex = workflowActorIndexForStage(currentStage, actors);
         if (startIndex < 0) {
             Reporter.log("WORKFLOW RECOVERY: Unknown workflow stage for " + moduleLabel()
@@ -474,7 +489,7 @@ public abstract class EasyQModuleWorkflowBase {
     private String locateCurrentWorkflowStage() {
         WorkflowActor dashboardOwner = detectPendingModuleOwnerFromDashboardAllTasks();
         if (dashboardOwner != null && tryOpenPendingModuleForActor(dashboardOwner)) {
-            return dashboardOwner.stage;
+            return lastResolvedWorkflowStage == null ? dashboardOwner.stage : lastResolvedWorkflowStage;
         }
 
         for (WorkflowActor actor : configuredWorkflowActors()) {
@@ -482,7 +497,7 @@ public abstract class EasyQModuleWorkflowBase {
                 continue;
             }
             if (tryOpenPendingModuleForActor(actor)) {
-                return actor.stage;
+                return lastResolvedWorkflowStage == null ? actor.stage : lastResolvedWorkflowStage;
             }
         }
         return null;
@@ -494,7 +509,12 @@ public abstract class EasyQModuleWorkflowBase {
         try {
             loginAsConfiguredUser(actor.username, actor.password);
             navigateToModule();
+            clickModuleTab("Under Review");
+            waitForReflectionDelay();
             boolean opened = openUnderReviewTask();
+            lastResolvedWorkflowStage = opened
+                    ? refreshActiveWorkflowParticipantsFromOpenDocumentInformation(actor)
+                    : null;
             Reporter.log("WORKFLOW RECOVERY: " + moduleLabel() + " pending task under "
                     + actor.roleLabel + " opened=" + opened + ". Visible text: " + shortBodyText(), true);
             return opened;
@@ -514,7 +534,8 @@ public abstract class EasyQModuleWorkflowBase {
                 loginAsConfiguredUser(author.username, author.password);
                 currentAuthorPassword = author.password;
                 navigateToModule();
-                if (!openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested", "Saved in Draft")) {
+                if (!openModuleRecordFromStatusTab("Draft", "Saved in Draft")
+                        && !openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested", "Saved in Draft")) {
                     continue;
                 }
                 Reporter.log("WORKFLOW RECOVERY: Draft " + moduleLabel()
@@ -553,6 +574,58 @@ public abstract class EasyQModuleWorkflowBase {
                 "Approver Amit",
                 workflowValue("APPROVER_NAME", "Amit Karane"), "Amit", "Amit Karane", "Amit Karni"));
         return actors;
+    }
+
+    private List<WorkflowActor> effectiveWorkflowActors() {
+        List<WorkflowActor> actors = new ArrayList<>();
+        if (!activeReviewerActors.isEmpty()) {
+            actors.addAll(activeReviewerActors);
+        }
+        if (activeApproverActor != null
+                && actors.stream().noneMatch(existing -> sameWorkflowActor(existing, activeApproverActor))) {
+            actors.add(activeApproverActor);
+        }
+        return actors.isEmpty() ? configuredWorkflowActors() : actors;
+    }
+
+    private WorkflowActor effectiveReviewerActor(int reviewerIndex) {
+        List<WorkflowActor> actors = effectiveWorkflowActors();
+        int reviewerSeen = 0;
+        for (WorkflowActor actor : actors) {
+            if (!"APPROVER".equalsIgnoreCase(actor.stage)) {
+                if (reviewerSeen == reviewerIndex) {
+                    return actor;
+                }
+                reviewerSeen++;
+            }
+        }
+        List<WorkflowActor> fallbackActors = configuredWorkflowActors();
+        return fallbackActors.get(Math.min(reviewerIndex, Math.max(0, fallbackActors.size() - 2)));
+    }
+
+    private WorkflowActor effectiveApproverActor() {
+        if (activeApproverActor != null) {
+            return activeApproverActor;
+        }
+        for (WorkflowActor actor : configuredWorkflowActors()) {
+            if ("APPROVER".equalsIgnoreCase(actor.stage)) {
+                return actor;
+            }
+        }
+        return configuredWorkflowActors().get(configuredWorkflowActors().size() - 1);
+    }
+
+    private void useConfiguredWorkflowActorsForNewSubmission() {
+        List<WorkflowActor> configuredActors = configuredWorkflowActors();
+        activeReviewerActors.clear();
+        for (WorkflowActor actor : configuredActors) {
+            if ("APPROVER".equalsIgnoreCase(actor.stage)) {
+                activeApproverActor = actor;
+            } else {
+                activeReviewerActors.add(actor);
+            }
+        }
+        lastResolvedWorkflowStage = "REVIEWER1";
     }
 
     private List<WorkflowActor> configuredDraftAuthorActors() {
@@ -604,6 +677,210 @@ public abstract class EasyQModuleWorkflowBase {
         if (authors.stream().noneMatch(existing -> sameWorkflowActor(existing, actor))) {
             authors.add(actor);
         }
+    }
+
+    private String refreshActiveWorkflowParticipantsFromOpenDocumentInformation(WorkflowActor currentOwner) {
+        if (!isModuleDetailOpen()) {
+            return currentOwner == null ? null : currentOwner.stage;
+        }
+        clickButtonByText("Document");
+        waitForSmallDelay();
+
+        String documentInfoText = documentInformationText();
+        String normalizedDocumentInfo = normalizeComparableText(documentInfoText);
+        Reporter.log("WORKFLOW RECOVERY: " + moduleLabel()
+                + " Document Information role mapping="
+                + documentInfoText.replaceAll("\\s+", " ").trim(), true);
+
+        WorkflowActor author = findKnownActorInRoleSection(normalizedDocumentInfo, "author");
+        List<WorkflowActor> reviewers = findKnownReviewersInDocumentInformation(normalizedDocumentInfo);
+        WorkflowActor approver = findKnownActorInRoleSection(normalizedDocumentInfo, "approver");
+
+        if (author != null) {
+            activeAuthorActor = actorForStage(author, "AUTHOR", "Author");
+        }
+        if (!reviewers.isEmpty()) {
+            activeReviewerActors.clear();
+            for (int reviewerIndex = 0; reviewerIndex < reviewers.size(); reviewerIndex++) {
+                activeReviewerActors.add(actorForStage(
+                        reviewers.get(reviewerIndex),
+                        "REVIEWER" + (reviewerIndex + 1),
+                        "Reviewer " + (reviewerIndex + 1)));
+            }
+        }
+        if (approver != null) {
+            activeApproverActor = actorForStage(approver, "APPROVER", "Approver");
+        }
+
+        Reporter.log("WORKFLOW RECOVERY: " + moduleLabel()
+                + " resolved author=" + roleLabelOrDash(activeAuthorActor)
+                + ", reviewers=" + reviewerListForLog(activeReviewerActors)
+                + ", approver=" + roleLabelOrDash(activeApproverActor), true);
+
+        if (currentOwner == null) {
+            return null;
+        }
+        for (WorkflowActor reviewer : activeReviewerActors) {
+            if (sameWorkflowActor(currentOwner, reviewer)) {
+                return reviewer.stage;
+            }
+        }
+        if (sameWorkflowActor(currentOwner, activeApproverActor)) {
+            return "APPROVER";
+        }
+        return currentOwner.stage;
+    }
+
+    private WorkflowActor actorForStage(WorkflowActor base, String stage, String rolePrefix) {
+        if (base == null) {
+            return null;
+        }
+        return new WorkflowActor(
+                stage,
+                base.username,
+                base.password,
+                rolePrefix + " " + primaryActorName(base),
+                base.aliases);
+    }
+
+    private String primaryActorName(WorkflowActor actor) {
+        if (actor == null || actor.aliases.length == 0 || actor.aliases[0] == null || actor.aliases[0].isBlank()) {
+            return actor == null ? "" : actor.roleLabel;
+        }
+        return actor.aliases[0];
+    }
+
+    private String roleLabelOrDash(WorkflowActor actor) {
+        return actor == null ? "--" : actor.roleLabel;
+    }
+
+    private String reviewerListForLog(List<WorkflowActor> reviewers) {
+        if (reviewers == null || reviewers.isEmpty()) {
+            return "--";
+        }
+        List<String> labels = new ArrayList<>();
+        for (WorkflowActor reviewer : reviewers) {
+            labels.add(reviewer.roleLabel);
+        }
+        return String.join(", ", labels);
+    }
+
+    private String documentInformationText() {
+        try {
+            Object text = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const visible = el => {
+                              if (!el) return false;
+                              const rect = el.getBoundingClientRect();
+                              const style = getComputedStyle(el);
+                              return rect.width > 0 && rect.height > 0
+                                && style.visibility !== 'hidden' && style.display !== 'none';
+                            };
+                            const textOf = el => String(el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+                            const candidates = Array.from(document.querySelectorAll('aside,section,article,div'))
+                              .filter(visible)
+                              .map(el => ({ el, text: textOf(el) }))
+                              .filter(item => item.text.toLowerCase().includes('document information'))
+                              .map(item => {
+                                const lower = item.text.toLowerCase();
+                                let score = 0;
+                                if (lower.includes('author')) score += 40;
+                                if (/reviewer\\s*\\d+/i.test(lower)) score += 60;
+                                if (lower.includes('approver')) score += 50;
+                                score -= Math.min(120, item.text.length / 20);
+                                return { text: item.text, score };
+                              })
+                              .sort((a, b) => b.score - a.score);
+                            return candidates.length ? candidates[0].text : '';
+                            """);
+            String documentInfoText = String.valueOf(text);
+            return documentInfoText.isBlank() ? getBodyText() : documentInfoText;
+        } catch (RuntimeException exception) {
+            return getBodyText();
+        }
+    }
+
+    private WorkflowActor findKnownActorInRoleSection(String normalizedDocumentInfo, String... roleLabels) {
+        for (String roleLabel : roleLabels) {
+            String section = normalizedRoleSection(normalizedDocumentInfo, roleLabel);
+            if (section.isBlank()) {
+                continue;
+            }
+            WorkflowActor matchedActor = knownAnyWorkflowActorByName(section);
+            if (matchedActor != null) {
+                return matchedActor;
+            }
+        }
+        return null;
+    }
+
+    private List<WorkflowActor> findKnownReviewersInDocumentInformation(String normalizedDocumentInfo) {
+        Map<Integer, WorkflowActor> numberedReviewers = new HashMap<>();
+        Matcher reviewerMatcher = Pattern.compile("\\breviewer\\s*(\\d+)\\b").matcher(normalizedDocumentInfo);
+        while (reviewerMatcher.find()) {
+            String reviewerSection = normalizedRoleSectionFromIndex(
+                    normalizedDocumentInfo,
+                    reviewerMatcher.start(),
+                    reviewerMatcher.end());
+            WorkflowActor reviewer = knownAnyWorkflowActorByName(reviewerSection);
+            if (reviewer != null) {
+                numberedReviewers.putIfAbsent(Integer.parseInt(reviewerMatcher.group(1)) - 1, reviewer);
+            }
+        }
+
+        List<WorkflowActor> reviewers = new ArrayList<>();
+        for (int reviewerIndex = 0; reviewerIndex < 20; reviewerIndex++) {
+            WorkflowActor reviewer = numberedReviewers.get(reviewerIndex);
+            if (reviewer != null && reviewers.stream().noneMatch(existing -> sameWorkflowActor(existing, reviewer))) {
+                reviewers.add(reviewer);
+            }
+        }
+        if (reviewers.isEmpty()) {
+            WorkflowActor genericReviewer = findKnownActorInRoleSection(normalizedDocumentInfo, "reviewer");
+            if (genericReviewer != null) {
+                reviewers.add(genericReviewer);
+            }
+        }
+        return reviewers;
+    }
+
+    private String normalizedRoleSection(String normalizedDocumentInfo, String roleLabel) {
+        String normalizedRoleLabel = normalizeComparableText(roleLabel);
+        int start = normalizedDocumentInfo.indexOf(normalizedRoleLabel);
+        if (start < 0) {
+            return "";
+        }
+        return normalizedRoleSectionFromIndex(normalizedDocumentInfo, start, start + normalizedRoleLabel.length());
+    }
+
+    private String normalizedRoleSectionFromIndex(String normalizedDocumentInfo, int start, int searchFrom) {
+        int end = normalizedDocumentInfo.length();
+        Matcher nextRoleMatcher = Pattern.compile("\\b(?:author|approver|reviewer\\s*\\d+|reviewer)\\b")
+                .matcher(normalizedDocumentInfo);
+        while (nextRoleMatcher.find()) {
+            if (nextRoleMatcher.start() >= searchFrom && nextRoleMatcher.start() < end) {
+                end = nextRoleMatcher.start();
+                break;
+            }
+        }
+        return normalizedDocumentInfo.substring(start, end);
+    }
+
+    private WorkflowActor knownAnyWorkflowActorByName(String text) {
+        WorkflowActor workflowActor = knownWorkflowActorByName(text);
+        if (workflowActor != null) {
+            return workflowActor;
+        }
+        String normalizedText = normalizeComparableText(text);
+        for (WorkflowActor author : configuredDraftAuthorActors()) {
+            for (String alias : author.aliases) {
+                if (alias != null && !alias.isBlank()
+                        && normalizedText.contains(normalizeComparableText(alias))) {
+                    return author;
+                }
+            }
+        }
+        return null;
     }
 
     private int workflowActorIndexForStage(String stage, List<WorkflowActor> actors) {
@@ -784,7 +1061,7 @@ public abstract class EasyQModuleWorkflowBase {
         }
 
         String currentOwner = "";
-        Matcher currentReviewerMatcher = Pattern.compile("(?:current reviewer|reviewed by)\\s*:?\\s+([a-z ]+?)(?:\\s+next reviewer|\\s+approver|\\s+due|\\s+view|\\s+\\d|$)")
+        Matcher currentReviewerMatcher = Pattern.compile("current reviewer\\s*:?\\s+([a-z ]+?)(?:\\s+next reviewer|\\s+approver|\\s+due|\\s+view|\\s+\\d|$)")
                 .matcher(normalizedText);
         if (currentReviewerMatcher.find()) {
             currentOwner = currentReviewerMatcher.group(1).trim();
@@ -817,15 +1094,11 @@ public abstract class EasyQModuleWorkflowBase {
                 + " widget more-popup rows=" + popupRows.replaceAll("\\s+", " ").trim(), true);
 
         WorkflowActor pendingOwner = null;
-        WorkflowActor fallbackOwner = null;
         for (String row : popupRows.split("\\R")) {
             String normalizedRow = normalizeComparableText(row);
             WorkflowActor rowActor = knownWorkflowActorByName(normalizedRow);
             if (rowActor == null) {
                 continue;
-            }
-            if (fallbackOwner == null) {
-                fallbackOwner = rowActor;
             }
             if (normalizedRow.startsWith("pending")) {
                 pendingOwner = rowActor;
@@ -837,7 +1110,7 @@ public abstract class EasyQModuleWorkflowBase {
                     + moduleLabel() + " owner=" + pendingOwner.roleLabel, true);
             return pendingOwner;
         }
-        return fallbackOwner;
+        return null;
     }
 
     private String dashboardModuleMorePopupRowsText() {
@@ -1189,14 +1462,14 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private WorkflowActor knownWorkflowActorByName(String text) {
-        String normalizedText = String.valueOf(text).toLowerCase(Locale.ROOT);
+        String normalizedText = normalizeComparableText(text);
         if (normalizedText.isBlank()) {
             return null;
         }
         for (WorkflowActor actor : configuredWorkflowActors()) {
             for (String alias : actor.aliases) {
                 if (alias != null && !alias.isBlank()
-                        && normalizedText.contains(alias.toLowerCase(Locale.ROOT))) {
+                        && normalizedText.contains(normalizeComparableText(alias))) {
                     return actor;
                 }
             }
@@ -1313,7 +1586,7 @@ public abstract class EasyQModuleWorkflowBase {
                         + " tab has no records on attempt " + attempt + ".", true);
                 return false;
             }
-            boolean opened = tabClicked && clickFirstViewActionOnCurrentTab();
+            boolean opened = tabClicked && clickStatusCardViewOnCurrentTab(tabLabel);
             if (!opened && fallbackStatus != null && !fallbackStatus.isBlank()) {
                 opened = openExistingRecordByStatus(tabLabel, fallbackStatus);
             }
@@ -1323,6 +1596,27 @@ public abstract class EasyQModuleWorkflowBase {
             waitForSmallDelay();
         }
         return false;
+    }
+
+    private boolean openDraftCardFromDraftTabIfPresent() {
+        openModuleListPage();
+        if (!clickModuleTab("Draft")) {
+            Reporter.log("WORKFLOW: " + moduleLabel() + " Draft tab was not clickable from list page.", true);
+            return false;
+        }
+        waitForReflectionDelay();
+        if (hasNoModuleRecordsOnCurrentTab()) {
+            Reporter.log("WORKFLOW: " + moduleLabel() + " Draft tab has no draft card.", true);
+            return false;
+        }
+        boolean opened = clickStatusCardViewOnCurrentTab("Draft")
+                || clickDraftCardViewWithActions()
+                || openExistingRecordByStatus("Saved in Draft", "Draft", "Rejected", "Returned", "Changes Requested");
+        waitForSmallDelay();
+        Reporter.log("WORKFLOW: " + moduleLabel() + " existing Draft card opened=" + opened
+                + ", detailOpen=" + isModuleDetailOpen()
+                + ". Visible text: " + shortBodyText(), true);
+        return opened && isModuleDetailOpen();
     }
 
     private boolean verifyCurrentModuleDetailIsViewModeOnly(String statusLabel) {
@@ -1430,21 +1724,191 @@ public abstract class EasyQModuleWorkflowBase {
                             + "  const s = window.getComputedStyle(el);"
                             + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
                             + "};"
+                            + "const inChrome = el => !!el.closest('nav, header, [class*=sidebar], [class*=menu], [class*=Menu]');"
                             + "const textOf = el => String((el.innerText || el.textContent || '') + ' '"
                             + "  + (el.getAttribute && (el.getAttribute('aria-label') || '')) + ' '"
                             + "  + (el.getAttribute && (el.getAttribute('title') || ''))).replace(/\\s+/g, ' ').trim().toLowerCase();"
-                            + "const actions = Array.from(document.querySelectorAll('button, a, [role=button], [class*=btn]'))"
+                            + "const clickLikeUser = el => {"
+                            + "  el.scrollIntoView({block:'center'});"
+                            + "  ['pointerdown','mousedown','mouseup','click'].forEach(type =>"
+                            + "    el.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, view:window})));"
+                            + "};"
+                            + "const targetFor = el => el.closest('button, a, [role=button], [role=link], [class*=btn]') || el;"
+                            + "const actions = Array.from(document.querySelectorAll('button, a, [role=button], [role=link], [class*=btn], span, div'))"
                             + "  .filter(el => visible(el) && /\\bview\\b|\\bopen\\b|details/.test(textOf(el)))"
-                            + "  .filter(el => !el.closest('nav, header, [class*=sidebar], [class*=menu], [class*=Menu]'));"
+                            + "  .filter(el => !inChrome(el) && !el.closest('[role=dialog], .modal, .dialog, .overlay'))"
+                            + "  .filter(el => textOf(el).length <= 90)"
+                            + "  .map(el => ({el, rect: el.getBoundingClientRect(), text: textOf(el)}))"
+                            + "  .sort((a, b) => {"
+                            + "    const exactScoreA = /^view\\s*[›> chevron_right]*$/i.test(a.text) ? 1000 : 0;"
+                            + "    const exactScoreB = /^view\\s*[›> chevron_right]*$/i.test(b.text) ? 1000 : 0;"
+                            + "    return (exactScoreB + b.rect.left + b.rect.top) - (exactScoreA + a.rect.left + a.rect.top);"
+                            + "  });"
                             + "if (!actions.length) return false;"
-                            + "actions[0].scrollIntoView({block:'center'});"
-                            + "actions[0].click();"
+                            + "clickLikeUser(targetFor(actions[0].el));"
                             + "return true;");
             waitForSmallDelay();
             return Boolean.TRUE.equals(result);
         } catch (RuntimeException exception) {
             return clickButtonByText("View", "Open", "Details");
         }
+    }
+
+    private boolean clickStatusCardViewOnCurrentTab(String tabLabel) {
+        try {
+            Object result = ((JavascriptExecutor) driver).executeScript(
+                    """
+                            const moduleLabel = String(arguments[0] || '').toLowerCase();
+                            const tabLabel = String(arguments[1] || '').toLowerCase();
+
+                            const visible = el => {
+                              const r = el.getBoundingClientRect();
+                              const s = window.getComputedStyle(el);
+                              return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
+                            };
+                            const normalize = value => String(value || '')
+                              .replace(/chevron_right/ig, ' ')
+                              .replace(/[>›»]/g, ' ')
+                              .replace(/\\s+/g, ' ')
+                              .trim()
+                              .toLowerCase();
+                            const textOf = el => normalize((el.innerText || el.textContent || '') + ' '
+                              + (el.getAttribute && (el.getAttribute('aria-label') || '')) + ' '
+                              + (el.getAttribute && (el.getAttribute('title') || '')));
+                            const inChrome = el => !!el.closest('nav, header, [class*=sidebar], [class*=menu], [class*=Menu]');
+                            const inDialog = el => !!el.closest('[role=dialog], .modal, .dialog, .overlay, .cdk-overlay-pane');
+                            const cardFor = el => el.closest('[class*=card], [class*=Card], .row, section, article')
+                              || el.closest('div');
+                            const clickableAncestor = el => {
+                              let node = el;
+                              for (let depth = 0; node && node !== document.body && depth < 10; depth++, node = node.parentElement) {
+                                const tag = String(node.tagName || '').toLowerCase();
+                                const role = String(node.getAttribute('role') || '').toLowerCase();
+                                const cls = String(node.className || '').toLowerCase();
+                                const style = window.getComputedStyle(node);
+                                const nodeText = textOf(node);
+                                if (tag === 'button' || tag === 'a' || role === 'button' || role === 'link'
+                                    || style.cursor === 'pointer' || typeof node.onclick === 'function'
+                                    || /btn|action|link|view|cursor|click|card/i.test(cls)) {
+                                  return node;
+                                }
+                              }
+                              return el;
+                            };
+                            const clickLikeUser = el => {
+                              el.scrollIntoView({block: 'center', inline: 'center'});
+                              const rect = el.getBoundingClientRect();
+                              const x = Math.max(1, Math.min(window.innerWidth - 2, Math.floor(rect.left + rect.width / 2)));
+                              const y = Math.max(1, Math.min(window.innerHeight - 2, Math.floor(rect.top + rect.height / 2)));
+                              const pointElement = document.elementFromPoint(x, y) || el;
+                              const target = clickableAncestor(pointElement) || clickableAncestor(el);
+                              ['pointerover', 'mousemove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']
+                                .forEach(type => target.dispatchEvent(new MouseEvent(type, {
+                                  bubbles: true,
+                                  cancelable: true,
+                                  view: window,
+                                  clientX: x,
+                                  clientY: y
+                                })));
+                              if (typeof target.click === 'function') target.click();
+                              return {x, y, targetText: textOf(target)};
+                            };
+
+                            const candidates = Array.from(document.querySelectorAll(
+                              'button, a, [role=button], [role=link], [class*=btn], span, div, p'
+                            ))
+                              .filter(el => visible(el) && !inChrome(el) && !inDialog(el))
+                              .map(el => {
+                                const text = textOf(el);
+                                const rect = el.getBoundingClientRect();
+                                const card = cardFor(el);
+                                const cardText = card ? textOf(card) : text;
+                                return {el, text, rect, cardText};
+                              })
+                              .filter(item => /(^|\\s)(view|open|details)(\\s|$)/.test(item.text))
+                              .filter(item => item.text.length <= 90)
+                              .filter(item => !/download|comment|notification|profile|logout|dashboard/.test(item.text))
+                              .sort((a, b) => {
+                                const score = item => {
+                                  let value = 0;
+                                  if (/^view\\b/.test(item.text)) value += 10000;
+                                  if (moduleLabel && item.cardText.includes(moduleLabel)) value += 2500;
+                                  if (tabLabel && item.cardText.includes(tabLabel)) value += 1500;
+                                  if (item.cardText.includes('saved in draft')) value += 1500;
+                                  if (item.rect.left > 350) value += 500;
+                                  value -= item.text.length;
+                                  return value;
+                                };
+                                return score(b) - score(a);
+                              });
+
+                            if (!candidates.length) {
+                              return 'NO_VIEW_ACTION';
+                            }
+
+                            const chosen = candidates[0];
+                            const click = clickLikeUser(chosen.el);
+                            return 'CLICKED_VIEW_ACTION|text=' + chosen.text
+                              + '|card=' + chosen.cardText.substring(0, 120)
+                              + '|xy=' + click.x + ',' + click.y
+                              + '|target=' + click.targetText.substring(0, 80);
+                            """,
+                    moduleLabel(),
+                    tabLabel);
+            Reporter.log("WORKFLOW: " + moduleLabel() + " " + tabLabel
+                    + " status-card View result=" + result, true);
+            waitForSmallDelay();
+            if (String.valueOf(result).startsWith("CLICKED_VIEW_ACTION")) {
+                return true;
+            }
+        } catch (RuntimeException exception) {
+            Reporter.log("WORKFLOW: " + moduleLabel() + " " + tabLabel
+                    + " status-card View click failed: " + exception.getClass().getSimpleName()
+                    + " - " + exception.getMessage(), true);
+        }
+        return clickFirstViewActionOnCurrentTab();
+    }
+
+    private boolean clickDraftCardViewWithActions() {
+        List<WebElement> viewCandidates = driver.findElements(By.xpath(
+                "//*[self::button or self::a or self::span or self::div][contains(normalize-space(.),'View')]"));
+        for (WebElement candidate : viewCandidates) {
+            if (!isUsable(candidate)) {
+                continue;
+            }
+            String text = String.valueOf(candidate.getText()).replaceAll("\\s+", " ").trim();
+            if (!containsAnyIgnoreCase(text, "View") || text.length() > 80) {
+                continue;
+            }
+            try {
+                WebElement card = candidate.findElement(By.xpath(
+                        "./ancestor::*[contains(normalize-space(.),'Saved in Draft') or contains(normalize-space(.),'Draft')][1]"));
+                if (!containsAnyIgnoreCase(card.getText(), moduleTextFragments())) {
+                    continue;
+                }
+            } catch (RuntimeException ignored) {
+                // Some card layouts do not expose a useful ancestor; try the candidate itself.
+            }
+            try {
+                scrollIntoView(candidate);
+                new Actions(driver)
+                        .moveToElement(candidate)
+                        .pause(Duration.ofMillis(150))
+                        .click()
+                        .perform();
+                waitForSmallDelay();
+                if (isModuleDetailOpen()) {
+                    Reporter.log("WORKFLOW: " + moduleLabel()
+                            + " Draft View opened using Selenium Actions on text='" + text + "'.", true);
+                    return true;
+                }
+            } catch (RuntimeException exception) {
+                Reporter.log("WORKFLOW: " + moduleLabel()
+                        + " Draft View Selenium Actions click failed for text='" + text + "': "
+                        + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+            }
+        }
+        return false;
     }
 
     private boolean openVersionHistoryPopupFromCurrentTab() {
@@ -1758,12 +2222,12 @@ public abstract class EasyQModuleWorkflowBase {
                 driver.navigate().back();
                 waitForSmallDelay();
             } catch (RuntimeException ignored) {
-                // Fallback below reopens the module from the menu.
+                // Direct route fallback below reopens the module list.
             }
         }
         if (!pageContainsAny("Draft", "Under Review", "Approved", "Obsolete")) {
-            if (openHamburgerMenu() && clickModuleFromHamburgerMenu()) {
-                waitForModulePage();
+            if (!openModuleListRouteDirectly()) {
+                navigateToModule();
             }
         }
     }
@@ -1909,9 +2373,36 @@ public abstract class EasyQModuleWorkflowBase {
     private void startBrowser() {
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", chromeDownloadPreferences());
+        options.addArguments(
+                "--remote-allow-origins=*",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-extensions",
+                "--disable-popup-blocking",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--window-size=1920,1080");
+        try {
+            Path chromeProfileDirectory = Path.of(
+                    System.getProperty("user.dir"),
+                    "target",
+                    "chrome-profiles",
+                    moduleLabel().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-")
+                            + "-" + System.nanoTime());
+            Files.createDirectories(chromeProfileDirectory);
+            options.addArguments("--user-data-dir=" + chromeProfileDirectory.toAbsolutePath());
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to prepare isolated Chrome profile for " + moduleLabel(), exception);
+        }
+        boolean headless = Boolean.parseBoolean(String.valueOf(config.getOptionalSecret("EASYQ_HEADLESS")));
+        if (headless) {
+            options.addArguments("--headless=new");
+        }
         driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-        driver.manage().window().maximize();
+        if (!headless) {
+            driver.manage().window().maximize();
+        }
     }
 
     private void prepareDownloadDirectory() {
@@ -1984,111 +2475,62 @@ public abstract class EasyQModuleWorkflowBase {
 
         navLog("NAV: Opening " + moduleLabel() + " module. Current URL: " + safeCurrentUrl());
 
-        if (openHamburgerMenu() && clickModuleFromHamburgerMenu() && waitForModulePage()) {
+        try {
+            HamburgerNavigationHelper.openModule(driver, wait, moduleTitleLocator(), moduleLabel(), moduleMenuRegex(), false);
+        } catch (AssertionError | RuntimeException exception) {
+            Reporter.log("NAV: Hamburger/sidebar " + moduleLabel()
+                    + " navigation failed. Trying direct route fallback. Reason: "
+                    + exception.getClass().getSimpleName() + " - " + exception.getMessage(), true);
+        }
+        if (waitForModulePage()) {
             return;
         }
 
-        Assert.fail(moduleLabel() + " module was not opened from the hamburger/sidebar menu. URL: "
+        if (openModuleListRouteDirectly()) {
+            return;
+        }
+
+        Assert.fail(moduleLabel() + " module was not opened from hamburger/sidebar or direct route. URL: "
                 + safeCurrentUrl() + " | Visible text: " + shortBodyText());
     }
 
-    private boolean openHamburgerMenu() {
-        navLog("NAV: Opening hamburger/sidebar menu.");
-        if (clickFirstDisplayed(hamburgerMenuTrigger)) {
-            waitForSmallDelay();
-            return true;
-        }
-
-        try {
-            Object clicked = ((JavascriptExecutor) driver).executeScript(
-                    "const visible = el => {"
-                            + "  const r = el.getBoundingClientRect();"
-                            + "  const s = window.getComputedStyle(el);"
-                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
-                            + "};"
-                            + "const textOf = el => [el.innerText, el.textContent, el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('class'), el.id]"
-                            + "  .join(' ').replace(/\\s+/g, ' ').trim();"
-                            + "const controls = Array.from(document.querySelectorAll('button,a,[role=\"button\"],svg,mat-icon,.hamburger,.menu,.menu-toggle,.sidebar-toggle,.navbar-toggler,.toggle'))"
-                            + "  .filter(visible);"
-                            + "let scored = controls.map(el => {"
-                            + "  const target = el.closest('button,a,[role=\"button\"],.hamburger,.menu-toggle,.sidebar-toggle,.navbar-toggler,.toggle') || el;"
-                            + "  const rect = target.getBoundingClientRect();"
-                            + "  const label = textOf(target);"
-                            + "  let score = 0;"
-                            + "  if (/hamburger|menu|sidebar|toggle|collapse|expand/i.test(label)) score += 80;"
-                            + "  if (rect.left < 140 && rect.top < 140) score += 45;"
-                            + "  if (rect.width <= 90 && rect.height <= 90) score += 20;"
-                            + "  if (/notification|bell|profile|avatar|logout|download|view/i.test(label)) score -= 100;"
-                            + "  return {target, score};"
-                            + "}).filter(item => item.score > 40)"
-                            + "  .sort((a, b) => b.score - a.score);"
-                            + "if (!scored.length) return false;"
-                            + "scored[0].target.click();"
-                            + "return true;");
-            if (Boolean.TRUE.equals(clicked)) {
-                navLog("NAV: Hamburger/sidebar menu opened using fallback.");
-                waitForSmallDelay();
-                return true;
+    private boolean openModuleListRouteDirectly() {
+        String appRoot = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        for (String route : moduleUrlFragments()) {
+            if (route == null || route.isBlank()) {
+                continue;
             }
-        } catch (RuntimeException ignored) {
-            // Direct visible menu fallback can still run.
+            try {
+                driver.get(appRoot + route.trim().replaceFirst("^/+", ""));
+                waitForSmallDelay();
+                if (waitForModulePage()) {
+                    Reporter.log("NAV: Opened " + moduleLabel() + " list directly using route: " + route, true);
+                    return true;
+                }
+            } catch (RuntimeException ignored) {
+                // Try the next known route spelling.
+            }
         }
         return false;
     }
 
-    private boolean clickModuleFromHamburgerMenu() {
-        navLog("NAV: Clicking " + moduleLabel() + " from hamburger/sidebar menu.");
-        try {
-            Object clicked = ((JavascriptExecutor) driver).executeScript(
-                    "const pattern = new RegExp(arguments[0], 'i');"
-                            + "const visible = el => {"
-                            + "  const r = el.getBoundingClientRect();"
-                            + "  const s = window.getComputedStyle(el);"
-                            + "  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';"
-                            + "};"
-                            + "const textOf = el => [el.innerText, el.textContent, el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('href')]"
-                            + "  .join(' ').replace(/\\s+/g, ' ').trim();"
-                            + "const roots = Array.from(document.querySelectorAll('aside,nav,[role=\"navigation\"],.sidebar,.side-bar,.sidenav,.drawer,.menu,.navigation,.navbar'))"
-                            + "  .filter(visible);"
-                            + "const selector = 'a,button,[role=\"button\"],[role=\"link\"],[role=\"menuitem\"],li,span,div';"
-                            + "const blocked = /no pending items|qms status|all tasks|my tasks|loading content|date of next|open action items|complaints reported|total products|review pending|approval pending|\\bview\\b/i;"
-                            + "const scoreOf = el => {"
-                            + "  const text = textOf(el);"
-                            + "  const rect = el.getBoundingClientRect();"
-                            + "  let score = 0;"
-                            + "  if (text.length <= 70) score += 100;"
-                            + "  if (rect.left <= 360) score += 80;"
-                            + "  if (/^(quality policy|quality objective|responsibility and authority|management review|document management|documents|capa|capa & deviation|training|products|complaint management|complaints)$/i.test(text)) score += 120;"
-                            + "  if (blocked.test(text)) score -= 500;"
-                            + "  return score - text.length;"
-                            + "};"
-                            + "const isMenuCandidate = el => {"
-                            + "  const text = textOf(el);"
-                            + "  if (!pattern.test(text) || blocked.test(text) || text.length > 120) return false;"
-                            + "  const card = el.closest('[class*=\"card\"],[class*=\"widget\"],section,article');"
-                            + "  if (card && blocked.test(textOf(card))) return false;"
-                            + "  return true;"
-                            + "};"
-                            + "const bestCandidate = items => items.filter(visible).filter(isMenuCandidate).sort((a, b) => scoreOf(b) - scoreOf(a))[0];"
-                            + "const findMatch = root => bestCandidate(Array.from(root.querySelectorAll(selector)));"
-                            + "let match = null;"
-                            + "for (const root of roots) { match = findMatch(root); if (match) break; }"
-                            + "if (!match) match = bestCandidate(Array.from(document.querySelectorAll(selector)).filter(el => el.getBoundingClientRect().left <= 360));"
-                            + "if (!match) return false;"
-                            + "const target = match.closest('a,button,[role=\"button\"],[role=\"link\"],[role=\"menuitem\"],li') || match;"
-                            + "target.scrollIntoView({block:'center'});"
-                            + "target.click();"
-                            + "return true;",
-                    moduleMenuRegex());
-            if (Boolean.TRUE.equals(clicked)) {
-                navLog("NAV: " + moduleLabel() + " tab clicked from hamburger/sidebar menu using fallback.");
-                waitForSmallDelay();
-                return true;
+    private By moduleTitleLocator() {
+        StringBuilder predicate = new StringBuilder();
+        for (String fragment : moduleTextFragments()) {
+            if (fragment == null || fragment.isBlank()) {
+                continue;
             }
-        } catch (RuntimeException ignored) {
-            // Final assertion will report the visible page state.
+            if (predicate.length() > 0) {
+                predicate.append(" and ");
+            }
+            predicate.append("contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),")
+                    .append(xpathLiteral(fragment.toLowerCase(Locale.ROOT)))
+                    .append(")");
         }
-        return false;
+        if (predicate.length() == 0) {
+            predicate.append("contains(normalize-space(.),").append(xpathLiteral(moduleLabel())).append(")");
+        }
+        return By.xpath("//*[" + predicate + "]");
     }
 
     private boolean waitForModulePage() {
@@ -2124,26 +2566,6 @@ public abstract class EasyQModuleWorkflowBase {
     private boolean isRestrictedModulePage() {
         return !containsAnyIgnoreCase(getBodyText(), "QMS Status")
                 && pageContainsAny("Restricted", "Unauthorized", "Access Denied", "Permission");
-    }
-
-    private By moduleMenuLocator() {
-        StringBuilder predicate = new StringBuilder();
-        for (String fragment : moduleTextFragments()) {
-            if (fragment == null || fragment.isBlank()) {
-                continue;
-            }
-            if (predicate.length() > 0) {
-                predicate.append(" or ");
-            }
-            String value = xpathLiteral(fragment.toLowerCase(Locale.ROOT));
-            predicate.append("contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),")
-                    .append(value).append(")")
-                    .append(" or contains(translate(@href,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),").append(value).append(")")
-                    .append(" or contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),").append(value).append(")")
-                    .append(" or contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),").append(value).append(")");
-        }
-        return By.xpath("//*[self::a or self::button or @role='button' or @role='link' or @role='menuitem' or self::li]["
-                + predicate + "]");
     }
 
     private boolean openDraftEditor() {
@@ -2353,14 +2775,21 @@ public abstract class EasyQModuleWorkflowBase {
 
         navigateToModule();
 
+        clickModuleTab("Under Review");
+        waitForReflectionDelay();
         if (openExistingRecordByStatus("Under Review", "Review Pending")) {
             return true;
         }
-        if (openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested")) {
+        clickModuleTab("Draft");
+        waitForReflectionDelay();
+        if (clickStatusCardViewOnCurrentTab("Draft")
+                || openExistingRecordByStatus("Draft", "Rejected", "Returned", "Changes Requested", "Saved in Draft")) {
             currentAuthorPassword = getPassword();
             fillModuleFormWithAutomationData();
             return submitCurrentDraftForReviewWithConfiguredUsers();
         }
+        clickModuleTab("Approved");
+        waitForReflectionDelay();
         if (openExistingRecordByStatus("Approved", "Active")) {
             currentAuthorPassword = getPassword();
             boolean moved = clickButtonByText("Move to Draft", "New Version", "Revise", "Edit");
@@ -2382,6 +2811,8 @@ public abstract class EasyQModuleWorkflowBase {
         Reporter.log("WORKFLOW: " + roleLabel + " logging in to " + action + " " + moduleLabel() + ".", true);
         loginAsConfiguredUser(username, password);
         navigateToModule();
+        clickModuleTab("Under Review");
+        waitForReflectionDelay();
 
         if (!openUnderReviewTask()) {
             return false;
@@ -2485,7 +2916,7 @@ public abstract class EasyQModuleWorkflowBase {
     private boolean clickActionInside(WebElement container, String... labels) {
         for (String label : labels) {
             List<WebElement> actions = container.findElements(By.xpath(
-                    ".//*[self::button or self::a or @role='button' or contains(@class,'btn') or contains(@title,"
+                    ".//*[self::button or self::a or self::span or self::div or @role='button' or contains(@class,'btn') or contains(@title,"
                             + xpathLiteral(label) + ")]"));
             for (WebElement action : actions) {
                 if (!isUsable(action)) {
@@ -2495,6 +2926,9 @@ public abstract class EasyQModuleWorkflowBase {
                 String title = String.valueOf(action.getAttribute("title"));
                 String ariaLabel = String.valueOf(action.getAttribute("aria-label"));
                 if (!containsAnyIgnoreCase(text + " " + title + " " + ariaLabel, label)) {
+                    continue;
+                }
+                if (text.length() > 120 && !label.equalsIgnoreCase(text.trim())) {
                     continue;
                 }
                 try {
@@ -3100,7 +3534,6 @@ public abstract class EasyQModuleWorkflowBase {
     }
 
     private void navLog(String message) {
-        System.out.println(message);
         Reporter.log(message, true);
     }
 

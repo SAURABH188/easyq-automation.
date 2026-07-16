@@ -21,12 +21,19 @@ public class EasyQResponsibilityAuthorityTest extends EasyQModuleWorkflowBase {
 
     @Override
     protected String[] moduleUrlFragments() {
-        return new String[]{"responsibility", "authority", "responsibility-authority", "responsibilityauthority"};
+        return new String[]{
+                "responsibility_and_authority",
+                "responsibility-authority",
+                "responsibility_authority",
+                "responsibilityauthority",
+                "responsibility",
+                "authority"
+        };
     }
 
     @Override
     protected String moduleMenuRegex() {
-        return "responsibility|authority";
+        return "responsibility\\s*(?:&|and)?\\s*authority|responsibility-authority|responsibility_and_authority|responsibilityauthority";
     }
 
     @Override
