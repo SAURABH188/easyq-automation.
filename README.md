@@ -40,7 +40,7 @@ The workflow can run Selenium TestNG suites on GitHub using headless Chrome. Rep
 
 ### What Runs Automatically
 
-- A safe scheduled run executes Monday to Friday at 08:00 IST.
+- A safe scheduled run executes every day at 07:00 IST and 19:00 IST.
 - The scheduled run uses `testng-login-ui-ux.xml`.
 - Workflow mutation is disabled for scheduled runs, so QP/QO/R&A records are not changed automatically.
 

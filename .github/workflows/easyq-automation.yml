@@ -1,0 +1,164 @@
+name: easyQ Selenium Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: TestNG suite to run
+        required: true
+        default: testng-login-ui-ux.xml
+        type: choice
+        options:
+          - testng-login-ui-ux.xml
+          - testng-login-password-remaining.xml
+          - testng.xml
+          - testng-dashboard.xml
+          - testng-active-logs.xml
+          - testng-quality-policy.xml
+          - testng-quality-policy-pdf-flow.xml
+          - testng-quality-objective.xml
+          - testng-responsibility-authority.xml
+          - testng-user-management.xml
+          - testng-products.xml
+          - testng-notifications.xml
+          - testng-training.xml
+          - testng-complaint-management.xml
+          - testng-capa.xml
+          - testng-document-management.xml
+          - testng-management-review.xml
+          - testng-dynamic-workflow.xml
+          - testng-credential-validation.xml
+      allow_workflow_mutations:
+        description: Allow suites to create/update/review beta workflow data
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      visual_delay_ms:
+        description: Delay between visible browser actions in milliseconds
+        required: true
+        default: "250"
+  schedule:
+    # 07:00 IST and 19:00 IST every day. Scheduled runs use the safe login UI suite.
+    - cron: "30 1,13 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  selenium-tests:
+    name: Run TestNG suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      EASYQ_HEADLESS: "true"
+      EASYQ_VISUAL_DELAY_MS: ${{ github.event.inputs.visual_delay_ms || '250' }}
+      EASYQ_PASSWORD: ${{ secrets.EASYQ_PASSWORD }}
+      EASYQ_ADMIN_PASSWORD: ${{ secrets.EASYQ_ADMIN_PASSWORD }}
+      EASYQ_DOC_CONTROLLER_PASSWORD: ${{ secrets.EASYQ_DOC_CONTROLLER_PASSWORD }}
+      EASYQ_DOC_CONTROLLER_AMITT_USERNAME: ${{ vars.EASYQ_DOC_CONTROLLER_AMITT_USERNAME || 'ameetraj001@gmail.com' }}
+      EASYQ_DOC_CONTROLLER_AMITT_PASSWORD: ${{ secrets.EASYQ_DOC_CONTROLLER_AMITT_PASSWORD }}
+      EASYQ_DOC_CONTROLLER_ANASUYA_USERNAME: ${{ vars.EASYQ_DOC_CONTROLLER_ANASUYA_USERNAME || 'anasuya@easyqsolutions.com' }}
+      EASYQ_DOC_CONTROLLER_ANASUYA_PASSWORD: ${{ secrets.EASYQ_DOC_CONTROLLER_ANASUYA_PASSWORD }}
+      EASYQ_DOC_CONTROLLER_SHUBHAM_USERNAME: ${{ vars.EASYQ_DOC_CONTROLLER_SHUBHAM_USERNAME || 'shubham@easyqsolutions.com' }}
+      EASYQ_DOC_CONTROLLER_SHUBHAM_PASSWORD: ${{ secrets.EASYQ_DOC_CONTROLLER_SHUBHAM_PASSWORD }}
+      EASYQ_ASSIGNEE_AMIT_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_AMIT_PASSWORD }}
+      EASYQ_ASSIGNEE_SWATI_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_SWATI_PASSWORD }}
+      EASYQ_ASSIGNEE_KARTIK_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_KARTIK_PASSWORD }}
+      EASYQ_ASSIGNEE_AYESHA_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_AYESHA_PASSWORD }}
+      EASYQ_ASSIGNEE_ANUSHKA_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_ANUSHKA_PASSWORD }}
+      EASYQ_ASSIGNEE_HIMI_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_HIMI_PASSWORD }}
+      EASYQ_ASSIGNEE_KAVITA_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_KAVITA_PASSWORD }}
+      EASYQ_ASSIGNEE_SAURABH_PASSWORD: ${{ secrets.EASYQ_ASSIGNEE_SAURABH_PASSWORD }}
+      EASYQ_QP_REVIEWER1_PASSWORD: ${{ secrets.EASYQ_QP_REVIEWER1_PASSWORD }}
+      EASYQ_NEW_PASSWORD: ${{ secrets.EASYQ_NEW_PASSWORD }}
+      EASYQ_TEST_USER_FIRST_NAME: ${{ vars.EASYQ_TEST_USER_FIRST_NAME || 'Automation' }}
+      EASYQ_TEST_USER_LAST_NAME: ${{ vars.EASYQ_TEST_USER_LAST_NAME || 'User' }}
+      EASYQ_TEST_USER_EMAIL: ${{ vars.EASYQ_TEST_USER_EMAIL }}
+      EASYQ_TEST_USER_PASSWORD: ${{ secrets.EASYQ_TEST_USER_PASSWORD }}
+      EASYQ_TEST_USER_DESIGNATION: ${{ vars.EASYQ_TEST_USER_DESIGNATION }}
+      EASYQ_TEST_USER_GROUP: ${{ vars.EASYQ_TEST_USER_GROUP }}
+      EASYQ_TEST_USER_ROLE: ${{ vars.EASYQ_TEST_USER_ROLE }}
+      EASYQ_EDIT_USER_EMAIL: ${{ vars.EASYQ_EDIT_USER_EMAIL }}
+      EASYQ_EDIT_USER_NEW_FIRST_NAME: ${{ vars.EASYQ_EDIT_USER_NEW_FIRST_NAME }}
+      EASYQ_EDIT_USER_NEW_LAST_NAME: ${{ vars.EASYQ_EDIT_USER_NEW_LAST_NAME }}
+      EASYQ_DISABLE_USER_EMAIL: ${{ vars.EASYQ_DISABLE_USER_EMAIL }}
+      EASYQ_DUPLICATE_USER_EMAIL: ${{ vars.EASYQ_DUPLICATE_USER_EMAIL }}
+      EASYQ_EXPECTED_LICENSE_AVAILABLE: ${{ vars.EASYQ_EXPECTED_LICENSE_AVAILABLE }}
+      EASYQ_EXPECTED_LICENSE_PURCHASED: ${{ vars.EASYQ_EXPECTED_LICENSE_PURCHASED }}
+      EASYQ_SUPER_ADMIN_USERNAME: ${{ vars.EASYQ_SUPER_ADMIN_USERNAME }}
+      EASYQ_SUPER_ADMIN_PASSWORD: ${{ secrets.EASYQ_SUPER_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: .m2-repo
+          key: ${{ runner.os }}-maven-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Choose suite and mutation mode
+        shell: bash
+        run: |
+          suite="${{ github.event.inputs.suite }}"
+          allow_mutations="${{ github.event.inputs.allow_workflow_mutations }}"
+
+          if [ -z "$suite" ]; then
+            suite="testng-login-ui-ux.xml"
+          fi
+
+          if [ -z "$allow_mutations" ]; then
+            allow_mutations="false"
+          fi
+
+          echo "SUITE_XML=$suite" >> "$GITHUB_ENV"
+          echo "ALLOW_WORKFLOW_MUTATIONS=$allow_mutations" >> "$GITHUB_ENV"
+          echo "Selected suite: $suite"
+          echo "Workflow mutations allowed: $allow_mutations"
+
+      - name: Check required login secret
+        shell: bash
+        run: |
+          if [ -z "$EASYQ_ADMIN_PASSWORD" ] && [ -z "$EASYQ_PASSWORD" ]; then
+            echo "::error::Set EASYQ_ADMIN_PASSWORD or EASYQ_PASSWORD in GitHub Actions secrets before running the suite."
+            exit 1
+          fi
+
+      - name: Run Selenium TestNG suite
+        shell: bash
+        run: |
+          mvn -B \
+            -Dmaven.repo.local=.m2-repo \
+            -DsuiteXmlFile="$SUITE_XML" \
+            -DallowWorkflowMutations="$ALLOW_WORKFLOW_MUTATIONS" \
+            -DEASYQ_HEADLESS=true \
+            -DEASYQ_VISUAL_DELAY_MS="$EASYQ_VISUAL_DELAY_MS" \
+            test
+
+      - name: Upload TestNG and screenshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: easyq-test-artifacts-${{ github.run_number }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            target/surefire-reports/**
+            test-output/**
+            target/easyq-downloads/**
